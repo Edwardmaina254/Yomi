@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "kind": "html",
+  "title": "YOMI — rail theme toggle removed (project diff)",
+  "entry": "yomi-nav-theme-toggle-cleanup.html",
+  "renderer": "html",
+  "status": "complete",
+  "exports": [
+    "html",
+    "pdf",
+    "zip"
+  ],
+  "createdAt": "2026-09-25T22:55:54.885Z",
+  "updatedAt": "2026-09-25T22:55:54.896Z",
+  "metadata": {
+    "identifier": "yomi-nav-theme-toggle-cleanup",
+    "artifactType": "text/html",
+    "inferred": false
+  }
+}

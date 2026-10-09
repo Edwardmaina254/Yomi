@@ -1,0 +1,45 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>YOMI — change summary</title>
+<style>
+  body{margin:0;background:#0d1017;color:#e8ecf4;font:15px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;padding:40px}
+  h1{font-size:20px;letter-spacing:-.01em;margin:0 0 6px}
+  p{color:#98a2ba;margin:0 0 24px}
+  .row{display:grid;grid-template-columns:230px 1fr;gap:12px 20px;max-width:760px}
+  .k{font:12px/1.5 ui-monospace,Menlo,monospace;color:#d7b25e}
+  .v{font-size:14px}
+  .del{color:#c9705a}
+  code{font:12.5px ui-monospace,Menlo,monospace;background:#1a1f2c;padding:2px 6px;border-radius:5px}
+  .ok{margin-top:28px;padding:12px 16px;border:1px solid #2b3446;border-radius:10px;font-size:13.5px;color:#98a2ba}
+  .ok b{color:#e8ecf4;font-weight:600}
+</style>
+</head>
+<body>
+  <h1>YOMI — sidebar theme toggle removed</h1>
+  <p>The light/dark toggle now exists only in the navbar, beside the account button.</p>
+
+  <div class="row">
+    <div class="k">src/app/page.tsx</div>
+    <div class="v"><span class="del">−</span> rail <code>&lt;button className="small" onClick={toggleTheme}&gt;</code></div>
+
+    <div class="k">src/app/search/page.tsx</div>
+    <div class="v"><span class="del">−</span> rail <code>&lt;button className="small" onClick={toggleTheme}&gt;</code></div>
+
+    <div class="k">src/app/library/page.tsx</div>
+    <div class="v"><span class="del">−</span> rail <code>&lt;button className="small" onClick={toggleTheme}&gt;</code></div>
+
+    <div class="k">src/app/globals.css</div>
+    <div class="v"><span class="del">−</span> <code>.yomi-rail button.small { … }</code> (dead rule, 0 refs)</div>
+
+    <div class="k">manga/[mangaId]/page.tsx</div>
+    <div class="v">already had no rail toggle — untouched</div>
+  </div>
+
+  <div class="ok">
+    <b>Verified</b> — <code>npx tsc --noEmit</code> clean · <code>/</code>, <code>/library</code>, <code>/search</code> each render exactly <b>1</b> theme toggle · single <code>next dev --webpack</code> tree, dev log clean.
+  </div>
+</body>
+</html>

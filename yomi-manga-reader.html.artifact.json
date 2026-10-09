@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "kind": "html",
+  "title": "YOMI — premium manga reader",
+  "entry": "yomi-manga-reader.html",
+  "renderer": "html",
+  "status": "complete",
+  "exports": [
+    "html",
+    "pdf",
+    "zip"
+  ],
+  "createdAt": "2026-09-15T11:16:49.124Z",
+  "updatedAt": "2026-09-15T11:16:49.162Z",
+  "metadata": {
+    "identifier": "yomi-manga-reader",
+    "artifactType": "text/html",
+    "inferred": false
+  }
+}

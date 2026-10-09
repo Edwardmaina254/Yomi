@@ -1,0 +1,33 @@
+
+> client@0.1.0 dev
+> next dev --webpack
+
+▲ Next.js 16.3.5 (webpack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.2.5:3000
+- Environments: .env.local
+✓ Ready in 883ms
+⚠ Attempted to load @next/swc-win32-x64-msvc, but an error occurred: \\?\F:\Yomi\client\node_modules\@next\swc-win32-x64-msvc\next-swc.win32-x64-msvc.node is not a valid Win32 application.
+\\?\F:\Yomi\client\node_modules\@next\swc-win32-x64-msvc\next-swc.win32-x64-msvc.node
+✓ Running next.config.ts took 244ms
+  Skipping creating a lockfile at F:\Yomi\client\.next\dev\lock because we're using WASM bindings
+
+○ Compiling / ...
+ GET / 200 in 16.2s (next.js: 15.8s, application-code: 378ms)
+ GET / 200 in 55ms (next.js: 7ms, application-code: 48ms)
+ GET /library 200 in 1146ms (next.js: 852ms, application-code: 294ms)
+ GET / 200 in 51ms (next.js: 18ms, application-code: 32ms)
+ GET /search 200 in 655ms (next.js: 512ms, application-code: 143ms)
+ GET / 200 in 127ms (next.js: 18ms, application-code: 109ms)
+ GET /library 200 in 38ms (next.js: 8ms, application-code: 30ms)
+ GET /library 200 in 75ms (next.js: 4ms, application-code: 71ms)
+ GET / 200 in 34ms (next.js: 6ms, application-code: 28ms)
+ GET / 200 in 81ms (next.js: 6ms, application-code: 75ms)
+ GET /read/01KSJE7TDM0JMZECZYE2BGJJ8K?provider=weebcentral&manga=01J76XYF5ZDZX41X5S64WQHFXZ%2FWind-Breaker-NII-Satoru&t=Wind+Breaker+%28NII+Satoru%29&pp=weebcentral&cover=https%3A%2F%2Ftemp.compsci88.com%2Fcover%2Fnormal%2F01J76XYF5ZDZX41X5S64WQHFXZ.webp&mt=manga&p=6 200 in 3.1s (next.js: 3.0s, application-code: 83ms)
+ GET /read/01KSJE7TDM0JMZECZYE2BGJJ8K?provider=weebcentral&manga=01J76XYF5ZDZX41X5S64WQHFXZ%2FWind-Breaker-NII-Satoru&t=Wind+Breaker+%28NII+Satoru%29&pp=weebcentral&cover=https%3A%2F%2Ftemp.compsci88.com%2Fcover%2Fnormal%2F01J76XYF5ZDZX41X5S64WQHFXZ.webp&mt=manga&p=6 200 in 233ms (next.js: 156ms, application-code: 77ms)
+ GET /read/01KSJE7TDM0JMZECZYE2BGJJ8K?provider=weebcentral&manga=01J76XYF5ZDZX41X5S64WQHFXZ%2FWind-Breaker-NII-Satoru&t=Wind+Breaker+%28NII+Satoru%29&pp=weebcentral&cover=https%3A%2F%2Ftemp.compsci88.com%2Fcover%2Fnormal%2F01J76XYF5ZDZX41X5S64WQHFXZ.webp&mt=manga&p=6 200 in 180ms (next.js: 118ms, application-code: 63ms)
+ GET /read/01KSJE7TDM0JMZECZYE2BGJJ8K?provider=weebcentral&manga=01J76XYF5ZDZX41X5S64WQHFXZ%2FWind-Breaker-NII-Satoru&t=Wind+Breaker+%28NII+Satoru%29&pp=weebcentral&cover=https%3A%2F%2Ftemp.compsci88.com%2Fcover%2Fnormal%2F01J76XYF5ZDZX41X5S64WQHFXZ.webp&mt=manga&p=6 200 in 132ms (next.js: 86ms, application-code: 46ms)
+ GET /read/01KSJE7TDM0JMZECZYE2BGJJ8K?provider=weebcentral&manga=01J76XYF5ZDZX41X5S64WQHFXZ%2FWind-Breaker-NII-Satoru&t=Wind+Breaker+%28NII+Satoru%29&pp=weebcentral&cover=https%3A%2F%2Ftemp.compsci88.com%2Fcover%2Fnormal%2F01J76XYF5ZDZX41X5S64WQHFXZ.webp&mt=manga&p=6 200 in 125ms (next.js: 85ms, application-code: 40ms)
+ GET /read/01KSJE7TDM0JMZECZYE2BGJJ8K?provider=weebcentral&manga=01J76XYF5ZDZX41X5S64WQHFXZ%2FWind-Breaker-NII-Satoru&t=Wind+Breaker+%28NII+Satoru%29&pp=weebcentral&cover=https%3A%2F%2Ftemp.compsci88.com%2Fcover%2Fnormal%2F01J76XYF5ZDZX41X5S64WQHFXZ.webp&mt=manga&p=6 200 in 136ms (next.js: 88ms, application-code: 48ms)
+ GET / 200 in 355ms (next.js: 13ms, application-code: 341ms)
+ GET / 200 in 59ms (next.js: 4ms, application-code: 56ms)

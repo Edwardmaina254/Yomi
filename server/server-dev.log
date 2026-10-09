@@ -1,0 +1,133 @@
+
+> server@1.0.0 dev
+> tsx watch src/index.ts
+
+◇ injected env (4) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (0) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+Yomi backend engine running on port 5000
+Scrape requested for: 54b81138-ce88-408c-8e5a-1b301ed68d8d using mangadex
+Scrape requested for: 54b81138-ce88-408c-8e5a-1b301ed68d8d using mangadex
+[Chapters] Primary mangadex found 3 chapters. Cross-checking others for "Komi Can't Communicate"...
+[Chapters] Primary mangadex found 3 chapters. Cross-checking others for "Komi Can't Communicate"...
+[Chapters] Winner is weebcentral with 506 chapters.
+[Chapters] Winner is weebcentral with 506 chapters.
+18:26:39 [tsx] change in ./src\index.ts Restarting...
+◇ injected env (4) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+◇ injected env (0) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+Yomi backend engine running on port 5000
+[Chapters] Primary mangadex found 3 chapters. Cross-checking others for "Komi Can't Communicate"...
+[Chapters] Winner is weebcentral with 506 chapters.
+Scrape requested for: 01J76XYZ40MQNDEFW7HSH1PP2W using weebcentral
+Scrape requested for: 01J76XYZ40MQNDEFW7HSH1PP2W using weebcentral
+[Chapters] Primary weebcentral found 0 chapters. Cross-checking others for "a96676e5-8ae2-425e-b549-7f15dd34a6d8"...
+[Chapters] Winner is weebcentral with 0 chapters.
+Proxy upstream error: 403 Forbidden for https://fmcdn.mangahere.com/store/manga/8469/cover.jpg?token=c7f26cbf5a0a063c3c086ccdaccc4f569ad9e97a&ttl=1789657200&v=1558679176 (referer: https://www.mangahere.cc/)
+Proxy error for https://fmcdn.mangahere.com/store/manga/8469/cover.jpg?token=c7f26cbf5a0a063c3c086ccdaccc4f569ad9e97a&ttl=1789657200&v=1558679176: Upstream returned 403
+Proxy upstream error: 403 Forbidden for https://fmcdn.mangahere.com/store/manga/36724/cover.jpg?token=2f72a7878d0aa980b0fb1cb1a2b1cc7c29014901&ttl=1789657200&v=1718417536 (referer: https://www.mangahere.cc/)
+Proxy error for https://fmcdn.mangahere.com/store/manga/36724/cover.jpg?token=2f72a7878d0aa980b0fb1cb1a2b1cc7c29014901&ttl=1789657200&v=1718417536: Upstream returned 403
+Proxy upstream error: 403 Forbidden for https://fmcdn.mangahere.com/store/manga/8656/cover.jpg?token=9a18e8df7cf9032da937f096831d34a6694aafad&ttl=1789657200&v=1558680304 (referer: https://www.mangahere.cc/)
+Proxy error for https://fmcdn.mangahere.com/store/manga/8656/cover.jpg?token=9a18e8df7cf9032da937f096831d34a6694aafad&ttl=1789657200&v=1558680304: Upstream returned 403
+[Chapters] Primary weebcentral found 1193 chapters. Cross-checking others for "One Piece"...
+[Chapters] Winner is weebcentral with 1193 chapters.
+Proxy upstream error: 403 Forbidden for https://fmcdn.mangahere.com/store/manga/8156/cover.jpg?token=f5e193951f6b91cbacc93af9ad6e42662de81cd7&ttl=1789657200&v=1558678022 (referer: https://www.mangahere.cc/)
+Proxy error for https://fmcdn.mangahere.com/store/manga/8156/cover.jpg?token=f5e193951f6b91cbacc93af9ad6e42662de81cd7&ttl=1789657200&v=1558678022: Upstream returned 403
+Proxy upstream error: 403 Forbidden for https://fmcdn.mangahere.com/store/manga/36724/cover.jpg?token=2f72a7878d0aa980b0fb1cb1a2b1cc7c29014901&ttl=1789657200&v=1718417536 (referer: https://www.mangahere.cc/)
+Proxy error for https://fmcdn.mangahere.com/store/manga/36724/cover.jpg?token=2f72a7878d0aa980b0fb1cb1a2b1cc7c29014901&ttl=1789657200&v=1718417536: Upstream returned 403
+Scrape requested for: 01M27CS4DQ1JVQDGARQJVK76EQ using weebcentral
+Scrape requested for: 01M27CS4DQ1JVQDGARQJVK76EQ using weebcentral
+Proxy error for https://mangadex.org/covers/6a468761-5bd6-4de0-a0cb-47cb456ac2e0/98162533-1838-4639-8419-2f19f8af651b.png: fetch failed
+Proxy error for https://mangadex.org/covers/69edf637-4258-4540-9fd2-6fa6e53ca68c/a5f21af5-bdcb-4fb8-8451-abf99dba21d2.jpg: fetch failed
+Scrape requested for: 01M27CS4DQ1JVQDGARQJVK76EQ using weebcentral
+Scrape requested for: 01M27CS4DQ1JVQDGARQJVK76EQ using weebcentral
+Proxy error for https://mangadex.org/covers/eb2d1a45-d4e7-4e32-a171-b5b029c5b0cb/4ac61d4b-77d6-4946-b24f-0935eafa0305.jpg: fetch failed
+Proxy error for https://mangadex.org/covers/6854b343-ccf9-45af-a64c-caf5a0898b8c/922ca99f-a1f1-4093-989a-4a9e01b99cfe.jpg: fetch failed
+Proxy error for https://mangadex.org/covers/f63c4549-93c6-495f-8a33-4246116289d3/427635d9-ea8a-4b47-8ec5-ed72b75fb017.jpg: fetch failed
+[Chapters] Primary mangadex found 8 chapters. Cross-checking others for "The Fragrant Flower Blooms with Dignity"...
+[Chapters] Primary mangadex found 8 chapters. Cross-checking others for "The Fragrant Flower Blooms with Dignity"...
+[Chapters] Winner is weebcentral with 204 chapters.
+[Chapters] Winner is weebcentral with 204 chapters.
+Scrape requested for: 01KAEC9R6YSDHEJKDH3C3EX243 using weebcentral
+Scrape requested for: 01KAEC9R6YSDHEJKDH3C3EX243 using weebcentral
+[Chapters] Primary weebcentral found 0 chapters. Cross-checking others for "418791c0-35cf-4f87-936b-acd9cddf0989"...
+[Chapters] Primary weebcentral found 0 chapters. Cross-checking others for "418791c0-35cf-4f87-936b-acd9cddf0989"...
+[Chapters] Winner is weebcentral with 0 chapters.
+[Chapters] Winner is weebcentral with 0 chapters.
+Scrape requested for: 01KAEC9R6YSDHEJKDH3C3EX243 using weebcentral
+Scrape requested for: 01KAEC9R6YSDHEJKDH3C3EX243 using weebcentral
+Scrape requested for: 01KAEC9R6YSDHEJKDH3C3EX243 using weebcentral
+Scrape requested for: 01KAEC9R6YSDHEJKDH3C3EX243 using weebcentral
+Proxy error for https://mangadex.org/covers/6854b343-ccf9-45af-a64c-caf5a0898b8c/922ca99f-a1f1-4093-989a-4a9e01b99cfe.jpg: fetch failed
+[Chapters] Primary mangadex found 0 chapters. Cross-checking others for "Solo Leveling"...
+[Chapters] Primary mangadex found 0 chapters. Cross-checking others for "Solo Leveling"...
+[Chapters] Winner is weebcentral with 201 chapters.
+[Chapters] Winner is weebcentral with 201 chapters.
+Scrape requested for: 01J76XYXYZHAP5EMZ62S0G3WGA using weebcentral
+Scrape requested for: 01J76XYXYZHAP5EMZ62S0G3WGA using weebcentral
+[Chapters] Primary weebcentral found 0 chapters. Cross-checking others for "32d76d19-8a05-4db0-9fc2-e0b0648fe9d0"...
+[Chapters] Primary weebcentral found 0 chapters. Cross-checking others for "32d76d19-8a05-4db0-9fc2-e0b0648fe9d0"...
+[Chapters] Winner is weebcentral with 0 chapters.
+[Chapters] Winner is weebcentral with 0 chapters.
+Scrape requested for: 01J76XYXYZHAP5EMZ62S0G3WGA using weebcentral
+Scrape requested for: 01J76XYXYZHAP5EMZ62S0G3WGA using weebcentral
+[Chapters] Primary weebcentral found 0 chapters. Cross-checking others for "32d76d19-8a05-4db0-9fc2-e0b0648fe9d0"...
+[Chapters] Primary weebcentral found 0 chapters. Cross-checking others for "32d76d19-8a05-4db0-9fc2-e0b0648fe9d0"...
+[Chapters] Winner is weebcentral with 0 chapters.
+[Chapters] Winner is weebcentral with 0 chapters.
+Scrape requested for: 01KAEC9R6YSDHEJKDH3C3EX243 using weebcentral
+Scrape requested for: 01KAEC9R6YSDHEJKDH3C3EX243 using weebcentral
+[Chapters] Primary weebcentral found 0 chapters. Cross-checking others for "418791c0-35cf-4f87-936b-acd9cddf0989"...
+[Chapters] Winner is weebcentral with 0 chapters.
+[Chapters] Primary weebcentral found 701 chapters. Cross-checking others for "Naruto"...
+[Chapters] Winner is weebcentral with 701 chapters.
+Scrape requested for: 01J76XYZY082SV13G02H90QZB1 using weebcentral
+Scrape requested for: 01J76XYZY082SV13G02H90QZB1 using weebcentral
+Scrape requested for: 01J76XYZY082SV13G02H90QZB1 using weebcentral
+Scrape requested for: 01J76XYZY082SV13G02H90QZB1 using weebcentral
+Scrape requested for: 01J76XYZY082SV13G02H90QZB1 using weebcentral
+Scrape requested for: 01J76XYZY082SV13G02H90QZB1 using weebcentral
+Proxy upstream error: 403 Forbidden for https://fmcdn.mangahere.com/store/manga/8421/cover.jpg?token=6cc60b18bb700e5c579b045ee7a0c61dabe20cbd&ttl=1789660800&v=1558678405 (referer: https://www.mangahere.cc/)
+Proxy error for https://fmcdn.mangahere.com/store/manga/8421/cover.jpg?token=6cc60b18bb700e5c579b045ee7a0c61dabe20cbd&ttl=1789660800&v=1558678405: Upstream returned 403
+[Chapters] Primary mangahere found 109 chapters. Cross-checking others for "Full Metal Alchemist"...
+[Chapters] Winner is mangahere with 109 chapters.
+Scrape requested for: full_metal_alchemist%2Fv001%2Fc003 using mangahere
+Scrape requested for: full_metal_alchemist%2Fv001%2Fc003 using mangahere
+Scrape requested for: full_metal_alchemist%2Fv001%2Fc004 using mangahere
+Scrape requested for: full_metal_alchemist%2Fv001%2Fc004 using mangahere
+Scrape requested for: full_metal_alchemist%2Fv001%2Fc003 using mangahere
+Scrape requested for: full_metal_alchemist%2Fv001%2Fc003 using mangahere
+Scrape requested for: full_metal_alchemist%2Fv001%2Fc003 using mangahere
+Scrape requested for: full_metal_alchemist%2Fv001%2Fc003 using mangahere
+[Chapters] Primary mangadex found 205 chapters. Cross-checking others for "The Guy She Was Interested in Wasn't a Guy at All"...
+[Chapters] Winner is mangadex with 205 chapters.
+Scrape requested for: af9a4326-9934-41bb-b666-fd5d8784fe4b using mangadex
+Scrape requested for: af9a4326-9934-41bb-b666-fd5d8784fe4b using mangadex
+Scrape requested for: 308a9287-013b-49f9-8bfd-1dfc0a6bbab6 using mangadex
+Scrape requested for: 308a9287-013b-49f9-8bfd-1dfc0a6bbab6 using mangadex
+Scrape requested for: af9a4326-9934-41bb-b666-fd5d8784fe4b using mangadex
+Scrape requested for: af9a4326-9934-41bb-b666-fd5d8784fe4b using mangadex
+Scrape requested for: d2726135-c790-4b79-bc5b-f4e96eae2ff4 using mangadex
+Scrape requested for: d2726135-c790-4b79-bc5b-f4e96eae2ff4 using mangadex
+Scrape requested for: d2bcab62-41c9-49f6-9cc8-574f6e82f9ac using mangadex
+Scrape requested for: d2bcab62-41c9-49f6-9cc8-574f6e82f9ac using mangadex
+Scrape requested for: 01J76XYZY082SV13G02H90QZB1 using weebcentral
+Scrape requested for: 01J76XYZY082SV13G02H90QZB1 using weebcentral
+[Chapters] Primary weebcentral found 701 chapters. Cross-checking others for "Naruto"...
+[Chapters] Winner is weebcentral with 701 chapters.
+[Chapters] Primary mangadex found 99 chapters. Cross-checking others for "The Eminence in Shadow"...
+[Chapters] Primary mangadex found 99 chapters. Cross-checking others for "The Eminence in Shadow"...
+[Chapters] Winner is weebcentral with 91 chapters.
+[Chapters] Winner is weebcentral with 91 chapters.
+Scrape requested for: 01J76XZ3W8MQWQC4NG7WKK70V4 using weebcentral
+Scrape requested for: 01J76XZ3W8MQWQC4NG7WKK70V4 using weebcentral
+[Chapters] Primary weebcentral found 0 chapters. Cross-checking others for "77bee52c-d2d6-44ad-a33a-1734c1fe696a"...
+[Chapters] Primary weebcentral found 0 chapters. Cross-checking others for "77bee52c-d2d6-44ad-a33a-1734c1fe696a"...
+[Chapters] Winner is weebcentral with 0 chapters.
+[Chapters] Winner is weebcentral with 0 chapters.
+19:36:18 [tsx] change in ./src\index.ts Restarting...
+◇ injected env (4) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (0) from .env // tip: ⌘ suppress logs { quiet: true }
+Yomi backend engine running on port 5000
+19:36:42 [tsx] change in ./src\index.ts Restarting...
+◇ injected env (4) from .env // tip: ⌘ suppress logs { quiet: true }
+◇ injected env (0) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+Yomi backend engine running on port 5000

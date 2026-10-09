@@ -1,0 +1,1852 @@
+@import "tailwindcss";
+
+/* ── Yomi Design System ── */
+:root {
+  --bg: oklch(14% 0.012 262);
+  --surface: oklch(18% 0.016 262);
+  --elevated: oklch(22% 0.02 262);
+  --fg: oklch(93% 0.01 262);
+  --muted: oklch(64% 0.02 262);
+  --border: oklch(28% 0.02 262);
+  --accent: oklch(78% 0.13 82);
+  --accent-ink: oklch(18% 0.03 262);
+  --accent-soft: oklch(30% 0.05 82 / 0.55);
+  --shadow: 0 18px 50px -18px oklch(0% 0 0 / 0.65);
+  --radius: 16px;
+  --radius-sm: 12px;
+
+  --page-bg: #f3efe7;
+  --page-ink: oklch(32% 0.02 60);
+  --page-line: oklch(70% 0.02 70);
+
+  /* ── Spotlight banner tokens (night defaults) ── */
+  --spot-ink: oklch(99% 0 0);
+  --spot-ink-soft: oklch(90% 0.01 90 / 0.9);
+  --spot-kicker: oklch(93% 0.04 90 / 0.85);
+  --spot-syn: oklch(90% 0.01 90 / 0.8);
+  --spot-glyph: oklch(100% 0.02 90 / 0.14);
+  --spot-wash: radial-gradient(120% 90% at 80% -10%, oklch(100% 0.03 90 / 0.25), transparent 50%);
+  --spot-veil: linear-gradient(transparent 18%, oklch(6% 0 0 / 0.72));
+  --spot-h1-shadow: 0 2px 24px oklch(0% 0 0 / 0.45);
+  --spot-chip-bg: oklch(0% 0 0 / 0.22);
+  --spot-chip-border: oklch(100% 0 0 / 0.22);
+  --spot-chip-text: oklch(98% 0 0);
+  --spot-glass-bg: oklch(10% 0 0 / 0.35);
+  --spot-glass-border: oklch(100% 0 0 / 0.18);
+  --spot-glass-text: oklch(98% 0 0);
+  --spot-glass-hover: oklch(16% 0 0 / 0.6);
+  --spot-dot: oklch(100% 0 0 / 0.3);
+  --spot-bg-opacity: 0.18;
+
+  --font-display: 'Space Grotesk', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --font-jp: 'Noto Sans JP', var(--font-display);
+
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sat-l: env(safe-area-inset-left, 0px);
+  --sat-r: env(safe-area-inset-right, 0px);
+
+  color-scheme: dark;
+}
+
+html[data-theme="paper"] {
+  --bg: oklch(97% 0.014 85);
+  --surface: oklch(99% 0.007 85);
+  --elevated: oklch(100% 0 0);
+  --fg: oklch(26% 0.022 60);
+  --muted: oklch(55% 0.02 70);
+  --border: oklch(90% 0.013 80);
+  --accent: oklch(63% 0.13 68);
+  --accent-ink: oklch(99% 0.005 80);
+  --accent-soft: oklch(70% 0.09 68 / 0.22);
+  --shadow: 0 18px 40px -20px oklch(30% 0 0 / 0.22);
+  --page-bg: #f6f2e9;
+  --page-ink: oklch(33% 0.02 60);
+  --page-line: oklch(74% 0.02 70);
+
+  /* ── Spotlight banner tokens (paper) ── */
+  --spot-ink: oklch(23% 0.02 60);
+  --spot-ink-soft: oklch(38% 0.02 55);
+  --spot-kicker: oklch(42% 0.02 55);
+  --spot-syn: oklch(36% 0.02 55 / 0.92);
+  --spot-glyph: oklch(28% 0.02 60 / 0.1);
+  --spot-wash: linear-gradient(180deg, color-mix(in oklch, var(--bg) 14%, transparent), color-mix(in oklch, var(--bg) 34%, transparent));
+  --spot-veil: linear-gradient(transparent 54%, color-mix(in oklch, var(--bg) 95%, transparent) 100%);
+  --spot-h1-shadow: 0 1px 0 oklch(100% 0 0 / 0.55);
+  --spot-chip-bg: color-mix(in oklch, var(--bg) 72%, transparent);
+  --spot-chip-border: color-mix(in oklch, var(--accent) 45%, transparent);
+  --spot-chip-text: var(--fg);
+  --spot-glass-bg: color-mix(in oklch, var(--bg) 88%, transparent);
+  --spot-glass-border: var(--border);
+  --spot-glass-text: var(--fg);
+  --spot-glass-hover: color-mix(in oklch, var(--elevated) 92%, transparent);
+  --spot-dot: color-mix(in oklch, var(--fg) 28%, transparent);
+  --spot-bg-opacity: 0.52;
+
+  color-scheme: light;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-elevated: var(--elevated);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+  --font-mono: var(--font-mono);
+}
+
+/* ── Atomic theme swap ── */
+html.yomi-theme-swap, html.yomi-theme-swap * {
+  transition: none !important;
+}
+
+/* ── Base reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+html {
+  font-size: clamp(15px, 0.55vw + 13px, 17px);
+  /* iOS otherwise inflates text in landscape and breaks the fixed shell. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--fg);
+  line-height: 1.55;
+}
+
+::selection { background: var(--accent); color: var(--accent-ink); }
+a { color: inherit; text-decoration: none; }
+
+/* Keyboard-only focus ring — pointer users never see it. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+img { display: block; max-width: 100%; }
+
+/* ── Utility classes ── */
+.yomi-mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.yomi-row { display: flex; align-items: center; }
+.yomi-gap-8 { gap: 8px; }
+.yomi-gap-12 { gap: 12px; }
+
+/* Cards are never hidden — content must be visible the moment you scroll to
+   it. Any entrance happens once at mount (see .yomi-enter below), not on
+   scroll, so scrolling stays buttery and nothing pops mid-scroll. */
+
+/* Mount-time entrance: plays once when a section renders. No scroll trigger,
+   no per-card stagger, no JS involvement — so it can never jank or strand
+   content invisible. Racks cascade gently via --ei. */
+@keyframes yomi-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+.yomi-enter {
+  animation: yomi-rise 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--ei, 0) * 0.07s);
+}
+
+/* ── App shell ── */
+.yomi-shell {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.yomi-main {
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.yomi-main::-webkit-scrollbar { width: 10px; }
+.yomi-main::-webkit-scrollbar-track { background: transparent; }
+.yomi-main::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 99px;
+  border: 3px solid var(--bg);
+}
+.yomi-main::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+.yomi-view {
+  max-width: 1180px;
+  margin: 0 auto;
+  /* Side gutters follow the *side* safe areas (notch in landscape) — the old
+     shorthand used the top inset here, so landscape phones sat under the cutout. */
+  padding: calc(16px + var(--sat)) calc(18px + var(--sat-r)) calc(96px + var(--sab)) calc(18px + var(--sat-l));
+}
+/* Landscape phones: reclaim the vertical room the tab bar reserves. */
+@media (max-width: 959px) and (orientation: landscape) {
+  .yomi-view { padding-bottom: calc(74px + var(--sab)); }
+}
+
+/* ── Desktop rail ── */
+.yomi-rail {
+  display: none;
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: 76px;
+  z-index: 60;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: calc(20px + var(--sat)) 12px calc(18px + var(--sab));
+  border-right: 1px solid var(--border);
+  background: color-mix(in oklch, var(--surface) 82%, transparent);
+  backdrop-filter: blur(18px);
+}
+.yomi-rail .mark {
+  width: 44px; height: 44px;
+  display: grid; place-items: center;
+  border: 1px solid var(--border); border-radius: 14px;
+  font-family: var(--font-jp); font-weight: 900; font-size: 1.25rem;
+  color: var(--accent); background: var(--surface);
+}
+.yomi-rail .spacer { flex: 1; }
+.yomi-rail button {
+  width: 46px; height: 46px;
+  display: grid; place-items: center;
+  border-radius: 14px; color: var(--muted); position: relative;
+  transition: color 0.15s, background 0.15s;
+}
+.yomi-rail button:hover { color: var(--fg); background: var(--elevated); }
+.yomi-rail button.active { color: var(--accent); background: var(--accent-soft); }
+.yomi-rail button.yomi-acct-btn.sq {
+  width: 38px; height: 38px; border-radius: 11px; padding: 0;
+  border: 1px solid transparent; background: transparent;
+}
+.yomi-rail button.yomi-acct-btn.sq:hover {
+  background: var(--elevated);
+  border-color: color-mix(in oklch, var(--accent) 34%, var(--border));
+}
+.yomi-rail .yomi-acct-btn.is-load.sq {
+  border-color: transparent; cursor: default;
+  background: linear-gradient(100deg, transparent 30%, var(--elevated) 50%, transparent 70%);
+  background-size: 220% 100%;
+}
+.yomi-rail svg { width: 22px; height: 22px; }
+
+@media (min-width: 960px) {
+  .yomi-shell { grid-template-columns: 76px 1fr; }
+  .yomi-main { grid-column: 2; }
+  .yomi-rail { display: flex; }
+  .yomi-tabbar { display: none !important; }
+
+  /* Desktop: roomier content column */
+  .yomi-view {
+    padding: calc(28px + var(--sat)) 40px calc(48px + var(--sab));
+    max-width: 1540px;
+  }
+
+  /* Desktop: the mobile brand bar is redundant with the rail — hide it */
+  .yomi-topbar { display: none; }
+
+  /* Desktop shelves stay horizontal scroll racks, now pinned to an even
+     number of columns per row (`--rack-cols`) with floating arrow controls.
+     Width math: (100% - gaps) / cols so a full row always fits edge to edge.
+     Column counts step up with the viewport so a card is never squeezed
+     below ~120px (titles stop being readable well before that). */
+  .yomi-rail-x {
+    margin-left: 0;
+    padding: 6px 12px 12px;
+    scroll-snap-type: none;
+    gap: var(--rack-gap, 18px);
+  }
+  .yomi-rail-x.yomi-rack-cards { --rack-cols: 5; }
+  .yomi-rail-x.yomi-rack-cards .yomi-mcard {
+    flex: none;
+    width: calc((100% - (var(--rack-cols) - 1) * var(--rack-gap, 18px)) / var(--rack-cols));
+  }
+  .yomi-rail-x.yomi-rack-wide { --rack-cols: 3; }
+  .yomi-rail-x.yomi-rack-wide .yomi-ccard {
+    flex: none;
+    width: calc((100% - (var(--rack-cols) - 1) * var(--rack-gap, 18px)) / var(--rack-cols));
+  }
+
+  /* Detail: main content left, About sidebar right */
+  .yomi-dbody .col1 { order: 1; }
+  .yomi-dbody .col2 { order: 2; }
+
+  /* Spotlight stretches taller on desktop */
+  .yomi-spot-wrap { height: clamp(340px, 42vw, 460px); }
+}
+@media (min-width: 1100px) {
+  .yomi-rail-x.yomi-rack-cards { --rack-cols: 6; }
+}
+@media (min-width: 1280px) {
+  .yomi-rail-x.yomi-rack-cards { --rack-cols: 8; }
+}
+@media (min-width: 1600px) {
+  .yomi-view { max-width: 1560px; }
+  .yomi-rail-x.yomi-rack-wide { --rack-cols: 4; }
+}
+
+/* ── Mobile topbar ── */
+.yomi-topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  /* .yomi-view already pads for the status bar, so this is plain rhythm. */
+  margin-bottom: 18px; min-height: 44px; gap: 10px;
+  position: relative; z-index: 10;
+}
+.yomi-brand {
+  display: flex; align-items: center; gap: 10px;
+  flex: 1 1 auto; min-width: 0; overflow: hidden;
+}
+/* Nav controls — account sits directly beside the light/dark toggle */
+.yomi-topbar-actions {
+  display: flex; align-items: center; gap: 6px;
+  flex: 0 0 auto; position: relative; z-index: 12;
+}
+/* Same box as .yomi-iconbtn so the pair reads as one control cluster */
+.yomi-topbar-actions .yomi-acct-btn {
+  height: 44px; border-radius: 13px; padding: 0 15px 0 13px;
+}
+.yomi-brand .mark {
+  width: 38px; height: 38px; flex: none;
+  display: grid; place-items: center;
+  border: 1px solid var(--border); border-radius: 12px;
+  font-family: var(--font-jp); font-weight: 900; color: var(--accent); background: var(--surface);
+}
+.yomi-brand-text {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis;
+}
+.yomi-brand .name {
+  font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; letter-spacing: 0.14em;
+  display: block; white-space: nowrap;
+}
+.yomi-brand .name small {
+  display: block; font-family: var(--font-body); font-weight: 500; font-size: 0.6rem;
+  letter-spacing: 0.3em; color: var(--muted); margin-top: 1px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+@media (max-width: 380px) {
+  .yomi-brand .name small { display: none; }
+}
+
+.yomi-iconbtn {
+  width: 44px; height: 44px; flex: 0 0 auto; position: relative; z-index: 11;
+  display: grid; place-items: center;
+  border-radius: 13px; color: var(--muted);
+  transition: color 0.15s, background 0.15s;
+}
+.yomi-iconbtn:hover { color: var(--fg); background: var(--elevated); }
+.yomi-iconbtn svg { width: 21px; height: 21px; }
+
+/* ── Mobile tab bar ── */
+/* Two destinations, so they sit centred as a pair instead of being flung to
+   the far quarters of the bar by `space-around`. */
+.yomi-tabbar {
+  position: fixed; inset: auto 0 0 0; z-index: 60;
+  display: flex; justify-content: center; align-items: center; gap: 10px;
+  padding: 8px 10px calc(10px + var(--sab));
+  border-top: 1px solid var(--border);
+  background: color-mix(in oklch, var(--bg) 82%, transparent);
+  backdrop-filter: blur(20px);
+}
+.yomi-tab {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  font-size: 0.64rem; font-weight: 600; color: var(--muted);
+  min-width: 92px; padding: 6px 0; border-radius: 12px; letter-spacing: 0.06em;
+  transition: color 0.15s;
+}
+.yomi-tab svg { width: 22px; height: 22px; }
+.yomi-tab.active { color: var(--accent); }
+.yomi-tab .dot {
+  width: 0; height: 3px; border-radius: 2px; background: var(--accent);
+  transition: width 0.2s ease;
+}
+.yomi-tab.active .dot { width: 16px; }
+
+/* ── Typography ── */
+.eyebrow {
+  font-family: var(--font-mono); font-size: 0.68rem;
+  letter-spacing: 0.18em; color: var(--muted); text-transform: uppercase;
+}
+.yomi-greeting h1 {
+  font-family: var(--font-display);
+  font-size: clamp(1.7rem, 4.4vw, 2.4rem);
+  font-weight: 700; letter-spacing: -0.02em; margin-top: 4px;
+}
+.yomi-section { margin-top: 34px; }
+@media (min-width: 960px) { .yomi-section:first-of-type { margin-top: 38px; } }
+.yomi-sec-head {
+  display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px;
+}
+.yomi-sec-head h2 {
+  font-family: var(--font-display); font-size: 1.12rem; font-weight: 600; letter-spacing: -0.01em;
+}
+.yomi-sec-head .more {
+  font-size: 0.78rem; font-weight: 600; color: var(--muted);
+  display: flex; align-items: center; gap: 4px;
+  transition: color 0.15s;
+}
+.yomi-sec-head .more:hover { color: var(--fg); }
+.yomi-sec-head .more svg { width: 14px; height: 14px; }
+
+/* ── Horizontal scroll rail ── */
+.yomi-rail-x {
+  display: flex; gap: var(--rack-gap, 16px);
+  overflow-x: auto; scroll-snap-type: x proximity;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  /* Bleed the gutter so covers run to the screen edge, then re-inset by the
+     same amount — both sides now respect the landscape notch inset. */
+  margin-left: calc(-18px - var(--sat-l));
+  padding: 6px calc(18px + var(--sat-r)) 12px calc(18px + var(--sat-l));
+}
+.yomi-rail-x::-webkit-scrollbar { display: none; }
+.yomi-rail-x > * { scroll-snap-align: start; }
+
+/* Genre chips wrap into a cloud instead of a hidden scroller (the search page
+   relies on this — the previous desktop-only rule left phones scrolled off). */
+.yomi-rail-x.yomi-rack-chips {
+  flex-wrap: wrap;
+  gap: 10px;
+  overflow-x: visible;
+  /* Fix broken mobile layout: wrapping elements shouldn't bleed into the screen edge 
+     or have snap behaviors that break touch events */
+  margin-left: 0;
+  margin-right: 0;
+  padding-left: 0;
+  padding-right: 0;
+  scroll-snap-type: none;
+}
+.yomi-rail-x.yomi-rack-chips .yomi-chip { white-space: nowrap; }
+
+/* ── Rack arrows (desktop) ── */
+.yomi-rack-wrap { position: relative; }
+.yomi-rack-holder { position: relative; }
+.rack-arrow {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  z-index: 5; width: 42px; height: 42px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: color-mix(in oklch, var(--surface) 88%, transparent);
+  border: 1px solid var(--border); color: var(--muted);
+  box-shadow: var(--shadow); backdrop-filter: blur(10px);
+  opacity: 0; pointer-events: none; cursor: pointer;
+  transition: opacity 0.25s, color 0.15s, background 0.15s, border-color 0.15s, transform 0.15s;
+}
+.rack-arrow:hover { color: var(--fg); border-color: var(--muted); background: var(--elevated); transform: translateY(-50%) scale(1.05); }
+.rack-arrow svg { width: 18px; height: 18px; }
+.rack-arrow.left { left: 0; }
+.rack-arrow.right { right: 0; }
+.yomi-rack-wrap:hover .rack-arrow, .yomi-rack-wrap:focus-within .rack-arrow,
+.yomi-rack-holder:hover .rack-arrow, .yomi-rack-holder:focus-within .rack-arrow { opacity: 1; pointer-events: auto; }
+.rack-arrow:disabled { opacity: 0 !important; pointer-events: none; }
+@media (max-width: 959px) { .rack-arrow { display: none; } }
+
+/* ── Spotlight carousel (rebuilt) ── */
+.yomi-spot-wrap {
+  position: relative;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  height: clamp(300px, 50vw, 420px);
+  background: var(--surface);
+  /* Vertical page scrolling stays native; the carousel claims horizontal
+     gestures itself (see the pointer handlers in SpotlightCarousel). */
+  touch-action: pan-y;
+}
+.yomi-spot-slide {
+  position: absolute; inset: 0;
+  opacity: 0; pointer-events: none;
+  visibility: hidden;
+  z-index: 0;
+  /* gradient fallback so a slide always has a rich backdrop — even before its
+     cover image loads or when the cover is missing/broken (spot slides are
+     full-bleed, so unlike .yomi-cover there is no placeholder glyph behind). */
+  background:
+    linear-gradient(165deg, var(--c1, #333), var(--c2, #555) 58%, var(--c3, #777));
+}
+/* The .active class is the single source of truth for slide visibility.
+   GSAP only plays the text entrance on the active slide — it must never gate
+   the reveal, because any re-render that drops its inline styles would
+   otherwise leave every slide at the CSS default (invisible). */
+.yomi-spot-slide.active {
+  opacity: 1; visibility: visible; pointer-events: auto;
+  z-index: 1;
+  transition: opacity .5s cubic-bezier(.4, 0, .2, 1), visibility 0s;
+}
+/* broken/missing spotlight cover → keep the gradient + glyph look intact */
+.yomi-spot-slide.no-img img { display: none !important; }
+.yomi-spot-cover {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  object-position: center 20%;
+}
+.yomi-spot-veil {
+  position: absolute; inset: 0; z-index: 1;
+  background: linear-gradient(
+    to top,
+    oklch(8% 0.01 262 / 0.92) 0%,
+    oklch(8% 0.01 262 / 0.65) 35%,
+    oklch(8% 0.01 262 / 0.18) 60%,
+    transparent 100%
+  );
+}
+html[data-theme="paper"] .yomi-spot-veil {
+  background: linear-gradient(
+    to top,
+    oklch(96% 0.01 85 / 0.95) 0%,
+    oklch(96% 0.01 85 / 0.7) 35%,
+    oklch(96% 0.01 85 / 0.2) 60%,
+    transparent 100%
+  );
+}
+.yomi-spot-glyph {
+  position: absolute; top: -80px; right: 20px; z-index: 0;
+  font-family: var(--font-jp); font-weight: 900;
+  font-size: clamp(10rem, 28vw, 18rem); line-height: 1;
+  color: oklch(100% 0 0 / 0.08);
+  user-select: none; transform: rotate(-6deg);
+  pointer-events: none;
+}
+html[data-theme="paper"] .yomi-spot-glyph {
+  color: oklch(20% 0.02 60 / 0.06);
+}
+.yomi-spot-body {
+  position: absolute; bottom: 0; left: 0; right: 0; z-index: 2;
+  padding: clamp(24px, 4vw, 40px);
+}
+.yomi-spot-kicker {
+  font-family: var(--font-mono); font-size: 0.6rem;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--spot-kicker);
+  display: flex; align-items: center; gap: 8px;
+}
+.yomi-spot-kicker::before {
+  content: ""; width: 22px; height: 2px;
+  background: var(--accent); opacity: 0.8;
+}
+.yomi-spot-body h1 {
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 5vw, 2.6rem);
+  line-height: 1.06; font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--spot-ink); margin-top: 8px;
+  text-shadow: var(--spot-h1-shadow);
+}
+.yomi-spot-body .sub {
+  font-size: 0.82rem; color: var(--spot-ink-soft); margin-top: 4px;
+  font-family: var(--font-body);
+}
+.yomi-spot-chips {
+  display: flex; gap: 8px; margin: 12px 0 16px; flex-wrap: wrap;
+}
+.yomi-spot-chips .yomi-chip {
+  background: var(--spot-chip-bg); border-color: var(--spot-chip-border);
+  color: var(--spot-chip-text); backdrop-filter: blur(6px);
+  font-size: 0.7rem; padding: 5px 12px;
+}
+.yomi-spot-nav {
+  position: absolute; bottom: 14px; right: 14px; z-index: 6;
+  display: flex; align-items: center; gap: 8px;
+}
+.yomi-spot-dots { display: flex; gap: 5px; min-width: 0; }
+.yomi-spot-dot {
+  width: 16px; height: 4px; border-radius: 2px;
+  background: var(--spot-dot); border: 0; cursor: pointer;
+  position: relative; flex: 0 0 auto;
+}
+/* Invisible hit area — the bar is only 4px tall, which is undraggable/un-
+   tappable on touch. Kept ≤ the dot gap so neighbouring targets never
+   overlap. */
+.yomi-spot-dot::after { content: ""; position: absolute; inset: -12px -2px; }
+.yomi-spot-dot.active { background: var(--accent); width: 24px; }
+.yomi-spot-arrow {
+  width: 32px; height: 32px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--spot-glass-bg); backdrop-filter: blur(6px);
+  border: 1px solid var(--spot-glass-border);
+  color: var(--spot-glass-text); cursor: pointer;
+}
+.yomi-spot-arrow:hover { background: var(--spot-glass-hover); transform: scale(1.05); }
+.yomi-spot-arrow svg { width: 15px; height: 15px; }
+.yomi-spot-idx {
+  font-family: var(--font-mono); font-size: 0.58rem;
+  color: var(--spot-glass-text); padding: 3px 8px;
+  border-radius: 99px; background: var(--spot-glass-bg);
+  backdrop-filter: blur(6px); letter-spacing: 0.1em;
+}
+@media (max-width: 600px) {
+  /* Tall enough for kicker + title + chips + CTA — the old 70vw cap clipped
+     the Read button on 360–390px phones. */
+  .yomi-spot-wrap { border-radius: 14px; height: clamp(300px, 84vw, 380px); }
+  /* Arrows + dots stay visible on phones (swipe is the fast path, not the
+     only path). The nav spans the full width instead of hugging the right
+     edge so pill + dots + both arrows fit together: with 18 fixed 16px dots
+     the old right-anchored row overflowed a 360px viewport and the wrap's
+     overflow:hidden clipped most dots away — untappable. Dots now flex
+     between 6–16px to whatever slide count the pool produced. */
+  .yomi-spot-nav { left: 12px; right: 12px; bottom: 12px; gap: 6px; }
+  .yomi-spot-dots { flex: 1; justify-content: center; gap: 4px; }
+  .yomi-spot-dot { flex: 1 1 auto; width: auto; min-width: 6px; max-width: 16px; height: 5px; }
+  .yomi-spot-dot.active { width: auto; max-width: 26px; flex-grow: 2; }
+  .yomi-spot-arrow { width: 30px; height: 30px; flex: 0 0 auto; }
+  .yomi-spot-arrow svg { width: 14px; height: 14px; }
+  .yomi-spot-body { padding: 20px 18px 58px; }
+  .yomi-spot-chips { margin: 10px 0 14px; }
+}
+
+/* ── Search bar (home) ── */
+.yomi-search-dropdown-wrap { position: relative; }
+.yomi-searchbar {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; height: 52px; padding: 0 16px;
+  border: 1px solid var(--border); border-radius: 16px;
+  background: var(--surface); color: var(--muted); font-size: 0.92rem;
+  transition: border-color 0.2s ease;
+}
+.yomi-searchbar:hover { border-color: color-mix(in oklch, var(--accent) 45%, var(--border)); }
+.yomi-searchbar:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.yomi-searchbar svg { width: 18px; height: 18px; flex: none; }
+.yomi-searchbar input {
+  flex: 1; min-width: 0; background: none; border: 0; outline: none;
+  font: inherit; font-size: 16px; color: var(--fg);
+}
+.yomi-searchbar input::placeholder { color: var(--muted); }
+.yomi-searchbar kbd {
+  font-family: var(--font-mono); font-size: 0.68rem;
+  padding: 2px 8px; border: 1px solid var(--border); border-radius: 7px;
+  color: var(--muted); margin-left: auto;
+}
+
+/* Live-suggestion dropdown */
+.yomi-suggest-panel {
+  position: absolute; top: calc(100% + 8px); left: 0; right: 0; z-index: 70;
+  border: 1px solid var(--border); border-radius: 18px;
+  background: var(--elevated); box-shadow: var(--shadow);
+  overflow: hidden; backdrop-filter: blur(20px);
+  animation: yomi-drop-in 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes yomi-drop-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+.yomi-suggest-loading {
+  display: grid; place-items: center; padding: 22px;
+}
+.yomi-suggest-list {
+  list-style: none; max-height: min(340px, 55vh);
+  overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+}
+.yomi-suggest-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 9px 14px; cursor: pointer;
+  transition: background 0.12s;
+}
+.yomi-suggest-item:hover { background: color-mix(in oklch, var(--bg) 55%, transparent); }
+.yomi-suggest-thumb {
+  width: 36px; height: 50px; flex: none; border-radius: 8px; overflow: hidden;
+  border: 1px solid var(--border);
+  background: linear-gradient(160deg, var(--c1, #333), var(--c3, #666));
+  display: grid; place-items: center;
+}
+.yomi-suggest-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.yomi-suggest-info {
+  min-width: 0; display: flex; flex-direction: column; gap: 2px;
+}
+.yomi-suggest-title {
+  font-size: 0.86rem; font-weight: 600; line-height: 1.3;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.yomi-suggest-meta {
+  font-family: var(--font-mono); font-size: 0.64rem; color: var(--muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* Resume point flag inside the search-suggestions meta line */
+.yomi-suggest-cont { color: var(--accent); font-weight: 700; }
+.yomi-suggest-empty { padding: 20px; text-align: center; color: var(--muted); font-size: 0.85rem; }
+.yomi-suggest-footer {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; padding: 11px; border-top: 1px solid var(--border);
+  font-size: 0.8rem; font-weight: 600; color: var(--accent);
+  transition: background 0.12s;
+}
+.yomi-suggest-footer:hover { background: color-mix(in oklch, var(--bg) 55%, transparent); }
+.yomi-suggest-footer svg { width: 14px; height: 14px; }
+
+/* Trend timeframe segmented control */
+.yomi-sec-trending { align-items: center; }
+.timeframe-toggle {
+  display: inline-flex; gap: 2px; padding: 3px;
+  border: 1px solid var(--border); border-radius: 12px;
+  background: var(--surface);
+}
+.timeframe-toggle button {
+  padding: 6px 14px; border-radius: 9px;
+  font-size: 0.74rem; font-weight: 600; color: var(--muted);
+  transition: background 0.15s, color 0.15s;
+}
+.timeframe-toggle button:hover { color: var(--fg); }
+.timeframe-toggle button.active {
+  background: var(--elevated); color: var(--fg);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+@media (max-width: 480px) {
+  .timeframe-toggle button { padding: 6px 10px; font-size: 0.7rem; }
+}
+
+/* Card meta line with a relative timestamp */
+.yomi-mcard .meta {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+}
+
+.yomi-type-badge {
+  font-family: var(--font-mono); font-size: 0.64rem; font-weight: 600;
+  color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em;
+  background: var(--accent-soft); padding: 2px 7px; border-radius: 6px;
+  white-space: nowrap; flex-shrink: 0;
+}
+.yomi-mcard .meta .when {
+  font-family: var(--font-mono); font-size: 0.66rem; font-weight: 600;
+  color: var(--accent); white-space: nowrap; margin-left: auto;
+}
+
+/* Resume link under a result title — jumps straight to the saved page */
+.yomi-cont-pill {
+  display: inline-flex; align-items: center; gap: 5px; align-self: flex-start;
+  max-width: 100%;
+  font-family: var(--font-mono); font-size: 0.62rem; font-weight: 700;
+  letter-spacing: 0.04em; color: var(--accent-ink); background: var(--accent);
+  padding: 3px 8px; border-radius: 7px; text-decoration: none;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  transition: filter 0.15s, transform 0.15s;
+}
+@media (hover: hover) and (pointer: fine) {
+  .yomi-cont-pill:hover { filter: brightness(1.08); transform: translateY(-1px); }
+}
+
+/* ── Cover art ── */
+.yomi-cover {
+  position: relative; aspect-ratio: 3 / 4.2;
+  border-radius: var(--radius); overflow: hidden;
+  border: 1px solid var(--border);
+  background: linear-gradient(160deg, var(--c1, #333), var(--c2, #555) 58%, var(--c3, #777));
+  flex: none; isolation: isolate;
+}
+.yomi-cover::before {
+  content: ""; position: absolute; inset: 0; z-index: 1;
+  background:
+    radial-gradient(140% 90% at 20% 8%, oklch(100% 0.02 90 / 0.12), transparent 48%),
+    radial-gradient(100% 100% at 92% 96%, oklch(0% 0 0 / 0.30), transparent 55%);
+  opacity: 0.7;
+  transition: opacity 0.3s;
+}
+/* hide gradient overlay when real image is present */
+.yomi-cover:has(img) img {
+  position: relative; z-index: 2;
+  width: 100%; height: 100%; object-fit: cover;
+}
+.yomi-cover:has(img)::before { opacity: 0; }
+/* failed image → restore gradient backdrop */
+.yomi-cover.no-img::before { opacity: 0.7; }
+
+.yomi-cover .c-type {
+  position: absolute; top: 8px; left: 8px; z-index: 3;
+  font-family: var(--font-mono); font-size: 0.6rem; font-weight: 600;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: oklch(99% 0 0 / 0.95);
+  background: oklch(10% 0 0 / 0.50); backdrop-filter: blur(8px);
+  padding: 3px 8px; border-radius: 8px;
+}
+.yomi-cover .c-rate {
+  position: absolute; bottom: 8px; right: 8px; z-index: 3;
+  font-family: var(--font-mono); font-size: 0.62rem; font-weight: 600;
+  color: oklch(99% 0 0 / 0.95);
+  background: oklch(10% 0 0 / 0.50); backdrop-filter: blur(8px);
+  padding: 3px 8px; border-radius: 8px;
+  display: flex; align-items: center; gap: 3px;
+}
+.yomi-cover .placeholder-glyph {
+  position: absolute; right: -5%; bottom: -8%; z-index: 2;
+  font-family: var(--font-jp); font-weight: 900;
+  font-size: clamp(4.5rem, 14vw, 7rem); line-height: 1;
+  color: oklch(100% 0.02 90 / 0.22);
+  transform: rotate(-8deg); user-select: none;
+}
+
+/* ── Manga card ── */
+/* Width is fluid on phones so a rack always shows a peek of the next cover
+   (and two full cards on the narrowest screens); desktop racks override this
+   with an exact --rack-cols width. */
+.yomi-mcard {
+  position: relative; width: clamp(128px, 40vw, 168px); flex: none;
+  display: flex; flex-direction: column; gap: 9px;
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (hover: hover) and (pointer: fine) {
+  .yomi-mcard:hover { transform: translateY(-5px); }
+}
+.yomi-mcard .yomi-cover { width: 100%; }
+.yomi-mcard .yomi-cover img {
+  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (hover: hover) and (pointer: fine) {
+  .yomi-mcard:hover .yomi-cover img { transform: scale(1.045); }
+}
+.yomi-mcard .card-text {
+  display: flex; flex-direction: column; gap: 3px;
+  padding: 0 2px;
+}
+.yomi-mcard h3 {
+  font-size: 0.88rem; font-weight: 600; line-height: 1.3;
+  display: -webkit-box; -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical; overflow: hidden;
+  letter-spacing: -0.01em;
+}
+.yomi-mcard .meta {
+  font-family: var(--font-mono); font-size: 0.68rem; font-weight: 500;
+  color: var(--muted); letter-spacing: 0.01em;
+}
+.yomi-mcard .rank {
+  position: absolute; top: 0; left: 0; z-index: 4;
+  font-family: var(--font-display); font-weight: 700; font-size: 1.3rem;
+  width: 32px; height: 32px;
+  display: grid; place-items: center;
+  border-radius: 0 0 10px 0;
+  background: oklch(10% 0 0 / 0.55); backdrop-filter: blur(8px);
+  color: var(--fg);
+}
+
+/* ── Chips / pills ── */
+.yomi-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 14px; border: 1px solid var(--border); border-radius: 99px;
+  font-size: 0.8rem; font-weight: 500; color: var(--muted);
+  white-space: nowrap; background: var(--surface);
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.yomi-chip:hover { color: var(--fg); border-color: var(--muted); }
+.yomi-chip.active {
+  background: var(--accent); color: var(--accent-ink); border-color: transparent;
+}
+
+/* ── Continue reading card ── */
+.yomi-ccard {
+  position: relative;
+  width: clamp(252px, 78vw, 320px); flex: none;
+  display: grid; grid-template-columns: 80px 1fr; gap: 14px;
+  padding: 14px; border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--surface); align-items: center;
+  text-align: left;
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+/* Stacked variant (detail page "similar titles") fills its column. */
+.yomi-similar-list .yomi-ccard { width: 100%; }
+.ccard-remove {
+  position: absolute; top: 8px; right: 8px; z-index: 5;
+  width: 24px; height: 24px; display: grid; place-items: center;
+  border-radius: 50%; background: color-mix(in oklch, var(--bg) 72%, transparent);
+  border: 1px solid var(--border); color: var(--muted);
+  font-size: 0.95rem; line-height: 1; font-family: var(--font-mono);
+  opacity: 0; transform: scale(0.85);
+  transition: opacity 0.15s, transform 0.15s, color 0.15s, background 0.15s, border-color 0.15s;
+  backdrop-filter: blur(6px);
+}
+.yomi-ccard:hover .ccard-remove, .ccard-remove:focus-visible { opacity: 1; transform: scale(1); }
+.ccard-remove:hover { color: var(--fg); background: color-mix(in oklch, var(--elevated) 85%, transparent); border-color: var(--muted); }
+@media (max-width: 959px) { .ccard-remove { opacity: 1; transform: scale(1); } }
+@media (hover: hover) and (pointer: fine) {
+  .yomi-ccard:hover {
+    border-color: var(--muted); transform: translateY(-2px);
+    box-shadow: 0 8px 24px -8px oklch(0% 0 0 / 0.3);
+  }
+}
+.yomi-ccard .yomi-cover { width: 80px; border-radius: var(--radius-sm); }
+.yomi-ccard .card-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.yomi-ccard h3 {
+  font-size: 0.92rem; font-weight: 600; line-height: 1.25;
+  display: -webkit-box; -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical; overflow: hidden;
+}
+.yomi-ccard .prog {
+  display: flex; align-items: baseline; justify-content: space-between; margin: 6px 0 5px;
+}
+.yomi-ccard .prog .lbl { font-family: var(--font-mono); font-size: 0.66rem; font-weight: 500; color: var(--muted); }
+.yomi-ccard .prog .pct { font-family: var(--font-mono); font-size: 0.68rem; color: var(--accent); font-weight: 600; }
+
+.yomi-bar { height: 3px; border-radius: 2px; background: var(--border); overflow: hidden; }
+.yomi-bar-fill { display: block; height: 100%; background: var(--accent); border-radius: 2px; width: 0; transition: width 0.9s cubic-bezier(0.6, 0.05, 0.2, 1); }
+
+/* ── Drop row ── */
+.yomi-drow {
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 4px; border-bottom: 1px solid var(--border);
+  transition: background 0.12s;
+}
+.yomi-drow:last-child { border-bottom: 0; }
+.yomi-drow:hover { background: var(--elevated); }
+.yomi-drow .yomi-cover { width: 48px; border-radius: 10px; aspect-ratio: 3/4.15; }
+.yomi-drow .card-text { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.yomi-drow h3 {
+  font-size: 0.92rem; font-weight: 600; line-height: 1.25;
+  display: -webkit-box; -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical; overflow: hidden;
+}
+.yomi-drow .sub { font-family: var(--font-mono); font-size: 0.68rem; font-weight: 500; color: var(--muted); }
+.yomi-drow .when { margin-left: auto; font-family: var(--font-mono); font-size: 0.68rem; font-weight: 500; color: var(--muted); white-space: nowrap; flex: none; }
+
+/* ── Spotlight / featured (legacy class — kept for backward compat) ── */
+.yomi-spot { position: relative; }
+
+/* ── Buttons ── */
+.yomi-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 50px; padding: 0 22px; border-radius: 15px;
+  font-weight: 600; font-size: 0.92rem; letter-spacing: 0.01em;
+  transition: transform 0.15s, background 0.15s;
+}
+.yomi-btn:active { transform: scale(0.97); }
+.yomi-btn svg { width: 18px; height: 18px; }
+.yomi-btn-primary { background: var(--accent); color: var(--accent-ink); }
+.yomi-btn-primary:hover { filter: brightness(1.08); }
+.yomi-btn-ghost {
+  border: 1px solid var(--border); color: var(--fg);
+  background: color-mix(in oklch, var(--surface) 60%, transparent);
+}
+.yomi-btn-ghost:hover { background: var(--surface); }
+
+/* ── Auth: Google sign-in + account ── */
+.yomi-auth-stack { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.yomi-auth-inline { display: inline-flex; flex-direction: column; gap: 6px; }
+
+.yomi-gbtn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  height: 50px; padding: 0 24px; border-radius: 15px;
+  font-weight: 600; font-size: 0.92rem; letter-spacing: 0.01em;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--fg);
+  transition: transform 0.15s, background 0.15s, border-color 0.15s, opacity 0.15s;
+  white-space: nowrap;
+}
+.yomi-gbtn:hover:not(:disabled) { background: var(--elevated); border-color: var(--muted); }
+.yomi-gbtn:active:not(:disabled) { transform: scale(0.98); }
+.yomi-gbtn:disabled { opacity: 0.55; cursor: not-allowed; }
+.yomi-gbtn-full { width: 100%; }
+.yomi-gbtn-compact { height: 38px; padding: 0 14px; font-size: 0.8rem; border-radius: 11px; gap: 8px; }
+
+/* Paper mode gets the official white Google button treatment. */
+html[data-theme="paper"] .yomi-gbtn { background: #fff; border-color: oklch(88% 0.01 80); }
+html[data-theme="paper"] .yomi-gbtn:hover:not(:disabled) { background: oklch(98% 0.004 80); border-color: oklch(80% 0.01 80); }
+
+.yomi-auth-error {
+  font-size: 0.74rem; line-height: 1.45; color: oklch(76% 0.13 25);
+  display: flex; gap: 6px; align-items: flex-start;
+}
+.yomi-auth-note {
+  display: flex; gap: 6px; align-items: flex-start;
+  font-size: 0.7rem; line-height: 1.45; color: var(--muted);
+}
+.yomi-auth-note code { font-family: var(--font-mono); font-size: 0.66rem; color: var(--fg); }
+
+/* Panel */
+.yomi-acct-bar {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  margin-top: 20px; padding: 14px 16px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: color-mix(in oklch, var(--surface) 70%, transparent);
+}
+.yomi-acct-bar.is-out { border-style: dashed; }
+.yomi-acct-bar.is-in { border-color: color-mix(in oklch, var(--accent) 32%, var(--border)); }
+.yomi-acct-bar-icon {
+  width: 40px; height: 40px; flex: none;
+  display: grid; place-items: center; border-radius: 12px;
+  background: var(--elevated); color: var(--muted);
+}
+.yomi-acct-bar-text { min-width: 0; flex: 1 1 200px; }
+.yomi-acct-bar-text b { display: block; font-family: var(--font-d); font-size: 0.95rem; font-weight: 600; letter-spacing: -0.01em; }
+.yomi-acct-bar-text span { display: block; font-size: 0.78rem; line-height: 1.5; color: var(--muted); margin-top: 2px; }
+.yomi-acct-bar-actions { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.yomi-acct-mini { height: 38px; padding: 0 14px; font-size: 0.78rem; border-radius: 11px; gap: 6px; }
+.yomi-acct-mini svg { width: 15px; height: 15px; }
+.yomi-acct-bar-error {
+  flex: 1 0 100%; display: flex; gap: 6px; align-items: flex-start;
+  font-size: 0.72rem; line-height: 1.45; color: oklch(72% 0.12 55);
+}
+.yomi-acct-bar-error svg { flex: none; margin-top: 2px; }
+
+.yomi-acct-pill {
+  display: inline-flex; align-items: center; gap: 5px; flex: none;
+  font-family: var(--font-mono); font-size: 0.64rem; letter-spacing: 0.08em;
+  text-transform: uppercase; padding: 5px 10px; border-radius: 99px;
+}
+.yomi-acct-pill.ok { color: var(--accent-ink); background: var(--accent); }
+.yomi-acct-pill.wait { color: var(--muted); background: var(--elevated); }
+
+/* Avatar */
+.yomi-acct-avatar, .yomi-acct-initial {
+  width: 26px; height: 26px; border-radius: 50%; flex: none;
+  display: grid; place-items: center; overflow: hidden;
+  font-family: var(--font-d); font-size: 0.78rem; font-weight: 700;
+  background: var(--elevated); color: var(--fg);
+  border: 1px solid var(--border);
+}
+.yomi-acct-avatar { object-fit: cover; }
+.yomi-acct-avatar.lg, .yomi-acct-initial.lg { width: 36px; height: 36px; font-size: 0.95rem; }
+.yomi-acct-avatar.xl, .yomi-acct-initial.xl { width: 40px; height: 40px; font-size: 1.05rem; }
+
+/* ── Nav account button ───────────────────────────────────────────────
+   Lives in the navbar beside the light/dark toggle. Square in the rail,
+   auto-width pill in the topbar. Click starts Google sign-in, or opens
+   the account dropdown once signed in.                                  */
+.yomi-acct-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 38px; padding: 0 13px 0 11px;
+  border: 1px solid var(--border); border-radius: 11px;
+  background: var(--surface); color: var(--muted);
+  font-size: 0.8rem; font-weight: 600; white-space: nowrap;
+  cursor: pointer; flex: none;
+  transition: color 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+}
+.yomi-acct-btn:hover:not(:disabled) {
+  color: var(--fg); background: var(--elevated);
+  border-color: color-mix(in oklch, var(--accent) 34%, var(--border));
+}
+.yomi-acct-btn:active:not(:disabled) { transform: scale(0.97); }
+.yomi-acct-btn:disabled { cursor: default; }
+.yomi-acct-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.yomi-acct-btn.sq { width: 38px; padding: 0; }
+.yomi-acct-btn-name {
+  max-width: 11ch; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* Loading placeholder holds the exact box — no shift when the session lands */
+.yomi-acct-btn.is-load {
+  width: 92px; border-color: transparent; cursor: default;
+  background: linear-gradient(100deg, var(--surface) 30%, var(--elevated) 50%, var(--surface) 70%);
+  background-size: 220% 100%;
+  animation: yomiAcctShimmer 1.4s linear infinite;
+}
+.yomi-acct-btn.is-load.sq { width: 38px; }
+.yomi-topbar-actions .yomi-acct-btn.is-load { width: 104px; }
+@keyframes yomiAcctShimmer { to { background-position: -220% 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .yomi-acct-btn.is-load, .yomi-acct-syncbtn { animation: none; transition: none; }
+}
+
+.yomi-acct-pop-wrap { position: relative; display: flex; }
+.yomi-acct-trigger { overflow: hidden; }
+.yomi-acct-trigger .yomi-acct-avatar,
+.yomi-acct-trigger .yomi-acct-initial { width: 24px; height: 24px; font-size: 0.72rem; }
+.yomi-acct-trigger.open {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: color-mix(in oklch, var(--accent) 40%, var(--border));
+}
+.yomi-acct-scrim { position: fixed; inset: 0; z-index: 55; }
+.yomi-acct-pop {
+  position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%);
+  z-index: 60; width: 232px; padding: 10px;
+  border: 1px solid var(--border); border-radius: 16px;
+  background: color-mix(in oklch, var(--elevated) 96%, transparent);
+  backdrop-filter: blur(20px); box-shadow: var(--shadow);
+  animation: yomiAuthPop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes yomiAuthPop { from { opacity: 0; transform: translateX(-50%) translateY(6px) scale(0.97); } }
+.yomi-acct-pop-id { display: flex; align-items: center; gap: 10px; padding: 4px 6px 10px; min-width: 0; }
+.yomi-acct-pop-meta { min-width: 0; }
+.yomi-acct-pop-meta b { display: block; font-size: 0.82rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.yomi-acct-pop-meta span { display: block; font-size: 0.68rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Sync state — the one place in the app that reports it */
+.yomi-acct-sync {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 9px 8px; margin-bottom: 4px;
+  border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+}
+.yomi-acct-syncbtn {
+  display: inline-flex; align-items: center; gap: 5px; flex: none;
+  padding: 5px 9px; border-radius: 8px;
+  font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--muted);
+  border: 1px solid var(--border);
+  transition: color 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+.yomi-acct-syncbtn:hover:not(:disabled) { color: var(--accent); border-color: color-mix(in oklch, var(--accent) 40%, var(--border)); background: var(--surface); }
+.yomi-acct-syncbtn:disabled { opacity: 0.55; cursor: default; }
+.yomi-acct-syncbtn svg { width: 12px; height: 12px; }
+
+.yomi-acct-pop-error {
+  display: flex; gap: 6px; align-items: flex-start;
+  padding: 0 6px 8px; font-size: 0.68rem; line-height: 1.45;
+  color: oklch(74% 0.12 45);
+}
+.yomi-acct-pop-error svg { flex: none; margin-top: 2px; }
+
+.yomi-acct-pop-item {
+  width: 100%; display: flex; align-items: center; gap: 9px;
+  padding: 9px 10px; border-radius: 10px; font-size: 0.8rem; font-weight: 500; color: var(--fg);
+}
+.yomi-acct-pop-item:hover { background: var(--surface); }
+.yomi-acct-pop-item:disabled { opacity: 0.6; }
+
+/* Topbar placement — opens downward, right-aligned to the button */
+.yomi-acct-pop.drop {
+  top: calc(100% + 10px); bottom: auto; right: 0; left: auto; transform: none;
+  animation-name: yomiAuthDrop;
+}
+@keyframes yomiAuthDrop { from { opacity: 0; transform: translateY(-6px) scale(0.97); } }
+
+.yomi-spin { animation: yomiSpin 0.9s linear infinite; }
+@keyframes yomiSpin { to { transform: rotate(360deg); } }
+
+/* ── Detail page ── */
+.yomi-dtop {
+  position: relative;
+  /* Full-bleed hero: cancels .yomi-view's gutters, side insets included. */
+  margin: calc(-16px - var(--sat)) calc(-18px - var(--sat-r)) 0 calc(-18px - var(--sat-l));
+  padding-top: var(--sat);
+}
+.yomi-dtop .blur {
+  position: absolute; inset: 0; filter: saturate(1.25); opacity: 0.5;
+  background: linear-gradient(155deg, var(--c1, #333), var(--c2, #555) 55%, var(--c3, #777));
+  mask-image: linear-gradient(black, transparent 88%);
+}
+.yomi-dtop .inner {
+  position: relative; z-index: 2;
+  display: flex; align-items: flex-end;
+  gap: clamp(16px, 4vw, 30px);
+  padding: calc(70px + var(--sat)) 18px 26px;
+  background: linear-gradient(transparent 30%, color-mix(in oklch, var(--bg) 88%, transparent));
+}
+@media (min-width: 960px) {
+  .yomi-dtop { margin-left: 0; margin-right: 0; border-radius: 0 0 26px 26px; }
+  .yomi-dtop .inner { padding-left: 34px; padding-right: 34px; }
+}
+.yomi-dtop .yomi-cover { width: clamp(120px, 30vw, 198px); }
+@media (min-width: 960px) { .yomi-dtop .yomi-cover { width: 200px; } }
+.yomi-dtop h1 {
+  font-family: var(--font-display);
+  font-size: clamp(1.7rem, 5vw, 2.6rem);
+  font-weight: 700; letter-spacing: -0.02em; line-height: 1.05;
+}
+.yomi-dtop .jp { font-family: var(--font-jp); font-size: 0.92rem; color: var(--muted); margin-top: 5px; }
+
+.yomi-dstats {
+  display: flex; gap: 6px; flex-wrap: wrap; margin-top: 14px;
+  font-family: var(--font-mono); font-size: 0.66rem;
+}
+.yomi-dstats .ds {
+  border: 1px solid var(--border); border-radius: 9px;
+  padding: 5px 9px; background: var(--surface);
+}
+.yomi-dstats .ds b { color: var(--fg); font-weight: 600; }
+
+.yomi-dcta { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+.yomi-dcta .yomi-btn { flex: 1; min-width: 150px; height: 48px; }
+
+.yomi-dbody { padding-top: 26px; display: grid; gap: 34px; }
+@media (min-width: 960px) {
+  .yomi-dbody { grid-template-columns: 1fr 340px; gap: 20px 40px; }
+  .yomi-dbody .col1 { order: 1; }
+  .yomi-dbody .col2 { order: 2; }
+}
+.yomi-dsec h2 {
+  font-family: var(--font-display); font-size: 1.05rem;
+  font-weight: 600; letter-spacing: -0.01em; margin-bottom: 12px;
+}
+.yomi-synop { color: var(--muted); font-size: 0.94rem; line-height: 1.75; }
+.yomi-synop .more-link { color: var(--accent); cursor: pointer; font-weight: 600; }
+.yomi-tags { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+
+/* ── Chapter list ── */
+.yomi-chlist {
+  display: grid; max-height: 520px; overflow-y: auto;
+  border: 1px solid var(--border); border-radius: var(--radius);
+}
+.yomi-chrow {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px; border-bottom: 1px solid var(--border);
+  background: var(--surface); text-align: left;
+  transition: background 0.12s;
+}
+.yomi-chrow:last-child { border-bottom: 0; }
+.yomi-chrow .cn {
+  font-family: var(--font-mono); font-size: 0.78rem;
+  color: var(--muted); width: 52px; flex: none;
+}
+.yomi-chrow .cn b { color: var(--fg); font-weight: 600; }
+.yomi-chrow .ct {
+  font-size: 0.82rem; font-weight: 500;
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.yomi-chrow .cd {
+  margin-left: auto; font-family: var(--font-mono);
+  font-size: 0.62rem; color: var(--muted);
+}
+.yomi-chrow:hover { background: var(--elevated); }
+.yomi-chrow.current { border-left: 3px solid var(--accent); }
+
+/* ── Search page ── */
+.yomi-s-input {
+  display: flex; align-items: center; gap: 10px;
+  border: 1px solid var(--border); border-radius: 16px;
+  background: var(--surface); padding: 0 14px; height: 54px;
+  transition: border-color 0.2s;
+}
+.yomi-s-input:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.yomi-s-input svg { width: 18px; height: 18px; color: var(--muted); flex: none; }
+.yomi-s-input input {
+  flex: 1; border: 0; background: none;
+  font: inherit; font-size: 1rem; color: var(--fg); outline: none; min-width: 0;
+}
+.yomi-s-input input::placeholder { color: var(--muted); }
+
+/* Grid pages (search / library). The track minimum is fluid so phones land on
+   two readable columns instead of one oversized cover, and cards stretch to
+   fill the cell (they carry a fixed rail width, which left dead space here). */
+.yomi-results {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(clamp(128px, 38vw, 168px), 1fr));
+  gap: 24px 18px; margin-top: 6px;
+}
+.yomi-results .yomi-mcard { width: 100%; }
+.yomi-empty {
+  border: 1px dashed var(--border); border-radius: 18px;
+  padding: 44px 24px; text-align: center; color: var(--muted);
+}
+.yomi-empty .big {
+  font-family: var(--font-jp); font-size: 3.4rem; line-height: 1;
+  color: var(--border); display: block; margin-bottom: 12px;
+}
+
+.yomi-rchip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 13px; border-radius: 99px; font-size: 0.78rem; font-weight: 500;
+  background: var(--surface); border: 1px solid var(--border); color: var(--fg);
+  transition: border-color 0.15s;
+}
+.yomi-rchip:hover { border-color: var(--muted); }
+.yomi-rchip .x { color: var(--muted); font-family: var(--font-mono); }
+
+/* ── Library page ── */
+.yomi-seg {
+  display: flex; gap: 6px; padding: 5px;
+  border: 1px solid var(--border); border-radius: 13px;
+  background: var(--surface); width: max-content;
+}
+.yomi-seg button {
+  padding: 8px 15px; border-radius: 9px;
+  font-size: 0.8rem; font-weight: 600; color: var(--muted);
+  transition: background 0.12s, color 0.12s;
+}
+.yomi-seg button.active { background: var(--elevated); color: var(--fg); }
+
+.yomi-sort-select {
+  border: 1px solid var(--border); border-radius: 11px;
+  padding: 9px 12px; font: inherit; font-size: 0.78rem; color: var(--fg);
+  background: var(--surface); font-family: var(--font-mono); outline: none;
+}
+
+/* ── Reader ── */
+.yomi-reader {
+  display: flex; flex-direction: column; height: 100dvh;
+  position: relative;
+  background: var(--bg);
+}
+body.yomi-reading { overflow: hidden; }
+
+/* Reader chrome */
+.yomi-r-chrome {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 40;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.yomi-r-chrome.hidden { opacity: 0; transform: translateY(-100%); pointer-events: none; }
+
+/* ── Immersive (focus) mode ────────────────────────────────────────────────
+   State already strips the bars, but that only holds for as long as React's
+   state agrees with the DOM. These rules are the hard lock: while immersive,
+   the chrome and the tap-zone chevrons are removed from rendering entirely —
+   no transition, no frame, no way for a scroll or a stray pointer event to
+   pop them back for a split second. */
+.yomi-reader.immersive .yomi-r-chrome,
+.yomi-reader.immersive .yomi-tapz {
+  opacity: 0 !important;
+  transform: none !important;
+  pointer-events: none !important;
+  visibility: hidden;
+  transition: none !important;
+}
+/* The default page padding reserves a band for the top/bottom bars. With the
+   bars gone that band is just dead space, so immersive gives the artwork the
+   whole viewport. */
+.yomi-reader.immersive .yomi-pages {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+.yomi-r-top {
+  display: flex; align-items: center; gap: 10px;
+  padding: calc(10px + var(--sat)) 14px 10px;
+  background: linear-gradient(color-mix(in oklch, var(--bg) 92%, transparent), transparent);
+}
+.yomi-r-top .ttl {
+  min-width: 0; flex: 1; display: flex; flex-direction: column;
+}
+.yomi-r-top .ttl b {
+  font-family: var(--font-display); font-size: 0.9rem;
+  font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.yomi-r-top .ttl span { font-family: var(--font-mono); font-size: 0.62rem; color: var(--muted); }
+
+/* Reader menu drawer */
+.yomi-menu-btn {
+  color: var(--fg);
+  background: color-mix(in oklch, var(--surface) 80%, transparent);
+  border: 1px solid var(--border);
+}
+.yomi-menu-btn:hover { background: var(--elevated); }
+.yomi-drawer-backdrop {
+  position: fixed; inset: 0; z-index: 55;
+  background: oklch(0% 0 0 / 0.5);
+  backdrop-filter: blur(2px);
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+.yomi-drawer-backdrop.open { opacity: 1; pointer-events: auto; }
+.yomi-drawer {
+  position: fixed; top: 0; left: 0; bottom: 0; z-index: 56;
+  width: min(380px, 100%);
+  display: flex; flex-direction: column;
+  background: var(--elevated);
+  border-right: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  transform: translateX(-102%);
+  transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+  padding: calc(14px + var(--sat)) 18px calc(18px + var(--sab));
+}
+.yomi-drawer.open { transform: none; }
+.yomi-drawer-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 14px;
+}
+.yomi-drawer-head b { font-family: var(--font-display); font-size: 1rem; font-weight: 600; }
+.yomi-drawer-head .yomi-iconbtn { width: 36px; height: 36px; }
+.yomi-drawer-tools {
+  /* Five tools, five columns — a 4-column grid stranded the theme toggle in a
+     half-empty second row. */
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px;
+  padding-bottom: 16px; margin-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.yomi-drawer-tools .yomi-mini {
+  width: 100%; height: auto; aspect-ratio: 1;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  font-size: 0.57rem; font-weight: 600; color: var(--muted);
+  border-radius: 12px; padding: 0 2px;
+  text-align: center; line-height: 1.15;
+}
+.yomi-drawer-tools .yomi-mini svg { width: 18px; height: 18px; margin: 0; }
+.yomi-drawer-label {
+  font-family: var(--font-display); font-size: 0.72rem; font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted);
+  display: flex; align-items: baseline; gap: 6px;
+  margin: 6px 0 8px;
+}
+.yomi-drawer-label .mono { font-family: var(--font-mono); font-size: 0.62rem; color: var(--muted); }
+.yomi-drawer-empty {
+  flex: 1; min-height: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 6px;
+  color: var(--muted); font-size: 0.85rem; text-align: center; padding: 24px 18px;
+}
+.yomi-drawer-empty .big {
+  font-family: var(--font-jp); font-size: 2.6rem; line-height: 1; color: var(--border); display: block; margin-bottom: 8px;
+}
+.yomi-drawer-empty small { color: var(--muted); opacity: 0.75; font-size: 0.72rem; }
+.yomi-drawer-list {
+  flex: 1; overflow-y: auto; min-height: 0;
+  display: flex; flex-direction: column; gap: 2px;
+  scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+  padding-right: 4px;
+}
+.yomi-dchrow {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 12px; border-radius: 11px;
+  background: var(--surface);
+  border: 1px solid transparent;
+  text-align: left;
+  transition: background 0.12s, border-color 0.12s;
+}
+.yomi-dchrow:hover { background: color-mix(in oklch, var(--bg) 60%, var(--surface)); }
+.yomi-dchrow .cn {
+  font-family: var(--font-mono); font-size: 0.68rem; color: var(--muted);
+  width: 40px; flex: none;
+}
+.yomi-dchrow .cn b { color: var(--fg); }
+.yomi-dchrow .ct {
+  font-size: 0.8rem; font-weight: 500;
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.yomi-dchrow .cvh {
+  margin-left: auto; flex: none;
+  font-family: var(--font-mono); font-size: 0.58rem; font-weight: 600;
+  color: var(--accent-ink); background: var(--accent);
+  padding: 3px 8px; border-radius: 7px;
+}
+.yomi-dchrow.current {
+  border-color: var(--accent);
+  border-left-width: 3px;
+  background: color-mix(in oklch, var(--accent) 8%, var(--surface));
+  box-shadow: inset 3px 0 0 -1px var(--accent);
+}
+.yomi-dchrow.current .cn { color: var(--accent); font-weight: 600; }
+.yomi-dchrow.current .ct { color: var(--fg); font-weight: 600; }
+.yomi-r-top .yomi-iconbtn { width: 40px; height: 40px; }
+
+.yomi-r-hair {
+  height: 2px; background: color-mix(in oklch, var(--border) 70%, transparent);
+  overflow: hidden;
+}
+.yomi-r-hair-fill {
+  display: block; height: 100%; width: 0;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+
+.yomi-mini {
+  width: 40px; height: 40px;
+  display: grid; place-items: center;
+  border-radius: 12px; color: var(--fg);
+  background: var(--surface); border: 1px solid var(--border); flex: none;
+  transition: background 0.12s;
+}
+.yomi-mini:hover { background: var(--elevated); }
+.yomi-mini.active {
+  color: var(--accent);
+  border-color: color-mix(in oklch, var(--accent) 55%, var(--border));
+}
+.yomi-mini svg { width: 18px; height: 18px; }
+@media (max-width: 420px) {
+  .yomi-mini { width: 36px; height: 36px; }
+}
+
+/* Reader pages container */
+.yomi-pages {
+  flex: 1; overflow-y: auto; overflow-x: hidden;
+  padding-top: calc(60px + var(--sat));
+  padding-bottom: calc(24px + var(--sab));
+  background: var(--bg);
+  /* Vertical mode scrolls this element — keep pull-to-refresh / scroll
+     chaining out of it so a flick never drags the page behind the reader. */
+  overscroll-behavior-y: contain;
+}
+
+/* ── Vertical Webtoon Reader (Centered & Continuous) ── */
+.yomi-vpages {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+.yomi-vpage {
+  width: 100%;
+  max-width: 760px; /* Standard Manhwa/Webtoon container width */
+  margin: 0 auto;
+  position: relative;
+  /* Prevent any text-spacing gaps between images */
+  font-size: 0;
+  line-height: 0;
+}
+.yomi-vpage + .yomi-vpage {
+  /* Prevent sub-pixel white rendering lines between sliced panels */
+  margin-top: -1px;
+}
+.yomi-vpage-img {
+  width: 100%;
+  display: block;
+  margin: 0;
+  padding: 0;
+}
+
+/* ── End-of-chapter navigation ──
+   The chapter-boundary call to action. In scroll mode it rides at the tail of
+   .yomi-vpages (below the last panel); in page-flip mode the same step is a
+   fixed pill on the first / last page. Both stay visible regardless of the
+   chrome's auto-hide state, so advancing never needs a reveal tap. */
+.yomi-chapend {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 60px 22px calc(44px + var(--sab));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+}
+.yomi-chapend-mark {
+  font-family: var(--font-jp);
+  font-size: 40px;
+  line-height: 1;
+  color: color-mix(in oklch, var(--accent) 68%, var(--border));
+  margin-bottom: 8px;
+}
+.yomi-chapend-kicker {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.yomi-chapend-title {
+  font-family: var(--font-d);
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 2px 0 22px;
+}
+.yomi-chapend-actions {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  flex-wrap: wrap;
+}
+.yomi-chapend-btn {
+  flex: 1 1 190px;
+  min-width: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 54px;
+  padding: 0 18px;
+  border-radius: 15px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--fg);
+  transition: transform 0.12s ease, filter 0.12s ease, background 0.12s ease, opacity 0.2s ease;
+}
+.yomi-chapend-btn .lbl { display: flex; flex-direction: column; line-height: 1.15; }
+.yomi-chapend-btn.prev .lbl { align-items: flex-start; text-align: left; }
+.yomi-chapend-btn.next .lbl { align-items: flex-end; text-align: right; }
+.yomi-chapend-btn small {
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.yomi-chapend-btn b { font-family: var(--font-d); font-size: 0.95rem; font-weight: 700; white-space: nowrap; }
+.yomi-chapend-btn.next {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: transparent;
+  box-shadow: 0 10px 26px -10px color-mix(in oklch, var(--accent) 60%, transparent);
+}
+.yomi-chapend-btn.next small { color: color-mix(in oklch, var(--accent-ink) 74%, transparent); }
+.yomi-chapend-btn:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.06); }
+.yomi-chapend-btn:active:not(:disabled) { transform: translateY(0); }
+.yomi-chapend-btn:disabled { opacity: 0.4; cursor: default; box-shadow: none; }
+
+/* Page-flip boundary pills (first / last page) */
+.yomi-chapedge {
+  position: fixed;
+  bottom: calc(16px + var(--sab));
+  z-index: 38;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 99px;
+  font-family: var(--font-d);
+  font-weight: 700;
+  font-size: 0.82rem;
+  border: 1px solid var(--border);
+  background: color-mix(in oklch, var(--elevated) 90%, transparent);
+  backdrop-filter: blur(12px);
+  color: var(--fg);
+  box-shadow: var(--shadow);
+  transition: transform 0.12s ease, filter 0.12s ease, opacity 0.2s ease;
+}
+.yomi-chapedge.prev { left: 14px; }
+.yomi-chapedge.next {
+  right: 14px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: transparent;
+  box-shadow: 0 8px 22px -10px color-mix(in oklch, var(--accent) 60%, transparent);
+}
+.yomi-chapedge:hover { transform: translateY(-1px); filter: brightness(1.06); }
+.yomi-chapedge:active { transform: translateY(0); }
+
+@media (max-width: 560px) {
+  .yomi-chapend { padding: 48px 16px calc(36px + var(--sab)); }
+  .yomi-chapend-btn { flex: 1 1 140px; min-width: 0; height: 48px; padding: 0 14px; }
+  .yomi-chapend-title { font-size: 1.15rem; }
+}
+
+.yomi-pages.paginated {
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+  padding: 0;
+  /* Page-flip mode has nothing to scroll, so the browser must not be allowed
+     to claim the touch sequence for panning. With `pan-y` the UA keeps a
+     passive panner alive and fires `pointercancel` the moment it decides a
+     drag is "maybe a scroll" — on phones that lands mid-turn and the page
+     fights the finger (the stutter). We own every gesture here. */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.yomi-pages.paginated.fit-width {
+  /* Keeps the flip-sheet centered with no container scrolling — a page-turn
+     needs the whole sheet on-screen to pivot in 3D, so fit-width never
+     dispatches a vertical scroll or top-aligns the sheet. */
+  align-items: center;
+  overflow: hidden;
+}
+.yomi-pages.paginated:active { cursor: grabbing; }
+.yomi-pages.paginated img { -webkit-user-drag: none; user-select: none; }
+/* The grab cursor is meaningless on touch and forces a style recalc on every
+   pointerdown there, so it only exists for real pointing devices. */
+@media not (hover: hover) {
+  .yomi-pages.paginated { cursor: default; }
+}
+
+/* ── Paginated page-flip (rebuilt single-viewport stack) ──
+   The sheet holds three layers: back (incoming, always mounted underneath),
+   front (current, pivots off over its spine edge), and a shade that sweeps
+   across the fold for depth. `perspective` + `preserve-3d` make the turn a
+   genuine 3D pivot instead of a flat crossfade. */
+/* Tight perspective: the whole point of the pivot is that the page foreshortens
+   as it lifts, which only reads if the vanishing point is close enough to matter.
+   At a wide 2600px the rotation looked almost like a flat cross-fade sliding
+   sideways, and the shallow angle also made the frame-to-frame motion during a
+   drag look uneven. 1500px keeps real foreshortening without distorting. */
+.yomi-flip-scene {
+  position: relative;
+  transform-style: preserve-3d;
+  perspective: 1500px;
+  perspective-origin: 50% 50%;
+  touch-action: none;
+}
+.yomi-flip-sheet {
+  position: relative;
+  transform-style: preserve-3d;
+  /* Pre-JS frame: the sheet is sized by script from the decoded image, but
+     until that lands it must still occupy the viewport so the first paint is
+     never a collapsed (or zero-height) page. */
+  width: min(78vw, 62vh * 0.7);
+  aspect-ratio: 3 / 4.3;
+}
+.yomi-flip-front,
+.yomi-flip-back {
+  position: absolute; inset: 0;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--page-bg);
+  box-shadow: 0 14px 44px -18px oklch(0% 0 0 / 0.6);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform-style: preserve-3d;
+}
+/* Only the turning layer needs to be pre-promoted. The back layer is static
+   for the whole gesture, and keeping it permanently promoted just burns a
+   full-page texture of memory on phones (backface-visibility alone already
+   promotes the front layer). */
+.yomi-flip-front {
+  will-change: transform, opacity;
+}
+.yomi-flip-front { z-index: 2; }
+.yomi-flip-back { z-index: 1; }
+.yomi-flip-front img,
+.yomi-flip-back img {
+  width: 100%; height: 100%;
+  object-fit: contain;
+  display: block;
+  background: var(--page-bg);
+}
+/* the fanned page block that shows through under the turning page */
+.yomi-flip-stack {
+  position: absolute; inset: 0; z-index: 0;
+  border-radius: 6px;
+  background:
+    linear-gradient(to right,
+      color-mix(in oklch, var(--page-bg) 55%, oklch(0% 0 0 / 0.5)) 0 3px,
+      transparent 3px),
+    var(--page-bg);
+  transform: translate3d(-3px, 0, -4px);
+  box-shadow: 0 10px 26px -14px oklch(0% 0 0 / 0.6);
+}
+.yomi-flip-shade {
+  position: absolute; inset: 0; z-index: 3;
+  pointer-events: none;
+  opacity: 0;
+  will-change: opacity;
+}
+
+/* Single manga page */
+.yomi-page {
+  aspect-ratio: 3 / 4.3;
+  background: var(--page-bg);
+  box-shadow: 0 2px 24px -8px oklch(0% 0 0 / 0.5);
+  position: relative; overflow: hidden;
+}
+.yomi-page .ink {
+  position: absolute; inset: 0; background: var(--page-bg);
+}
+.yomi-pages.lamp .yomi-page,
+.yomi-pages.lamp .yomi-page .ink {
+  background: oklch(90% 0.042 75);
+}
+
+/* Manga panel (abstract generated art) */
+.yomi-panel {
+  position: absolute; border: 1px solid var(--page-line);
+  overflow: hidden;
+  background: linear-gradient(165deg, oklch(94% 0.012 80), oklch(87% 0.015 70));
+}
+.yomi-pages.lamp .yomi-panel,
+.yomi-pages.lamp .yomi-panel .p-inner {
+  background: linear-gradient(165deg, oklch(86% 0.035 72), oklch(80% 0.028 68)) !important;
+}
+.yomi-panel .p-inner { position: absolute; inset: 0; }
+.yomi-sfx {
+  position: absolute; font-family: var(--font-jp); font-weight: 900;
+  color: oklch(30% 0.02 60 / 0.16); user-select: none; line-height: 1;
+}
+.yomi-pages.lamp .yomi-sfx { color: oklch(38% 0.02 60 / 0.16); }
+.yomi-lines {
+  position: absolute; inset: 0;
+  background: repeating-linear-gradient(104deg, transparent 0 46px, oklch(42% 0.02 70 / 0.16) 46px 47px);
+  opacity: 0.4;
+}
+.yomi-dots {
+  position: absolute; inset: 0;
+  background-image: radial-gradient(oklch(35% 0.02 70 / 0.22) 1px, transparent 1px);
+  background-size: 9px 9px; opacity: 0.35;
+  mask-image: radial-gradient(100% 100% at 30% 30%, black 30%, transparent 75%);
+}
+
+/* Tap zones for paginated mode (visual affordance only — the flip scene
+   owns tap/swipe via its own pointer handlers). Pointer-events stay off, so
+   the hover reveal is driven by the reader root, not by the zone itself. */
+.yomi-tapz {
+  position: absolute; top: 0; bottom: 0; width: 26vw; z-index: 30;
+  display: grid; place-items: center; color: var(--fg);
+  opacity: 0; transition: opacity 0.25s;
+  pointer-events: none;
+}
+.yomi-tapz.left { left: 0; }
+.yomi-tapz.right { right: 0; }
+.yomi-tapz .zf {
+  width: 46px; height: 46px;
+  display: grid; place-items: center; border-radius: 50%;
+  background: color-mix(in oklch, var(--elevated) 75%, transparent);
+  backdrop-filter: blur(8px); border: 1px solid var(--border);
+  transform: translateY(14px);
+}
+@media (hover: hover) and (pointer: fine) {
+  .yomi-reader:hover .yomi-tapz { opacity: 0.34; }
+}
+.yomi-tapz.off { opacity: 0 !important; }
+.yomi-pages.paginated.show-edges .yomi-tapz { opacity: 0.5; }
+
+/* ── Tweaks panel ── */
+.yomi-tw {
+  position: fixed; right: 16px; bottom: calc(80px + var(--sab));
+  z-index: 80; display: flex; flex-direction: column; align-items: flex-end; gap: 10px;
+}
+@media (min-width: 960px) { .yomi-tw { bottom: 22px; } }
+.yomi-tw-panel {
+  width: 236px; border: 1px solid var(--border); border-radius: 18px;
+  background: color-mix(in oklch, var(--elevated) 94%, transparent);
+  backdrop-filter: blur(20px); padding: 16px;
+  box-shadow: var(--shadow); transform-origin: bottom right;
+}
+.yomi-tw-panel h4 {
+  font-size: 0.66rem; font-weight: 600; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 11px;
+}
+.yomi-tw-panel .lbl {
+  font-size: 0.74rem; color: var(--muted); margin: 12px 0 7px; font-weight: 500;
+}
+.yomi-sw { display: flex; gap: 6px; }
+.yomi-sw button {
+  flex: 1; height: 34px; border-radius: 9px;
+  font-size: 0.72rem; font-weight: 600; color: var(--muted);
+  border: 1px solid var(--border);
+  transition: background 0.12s, color 0.12s;
+}
+.yomi-sw button.active { background: var(--elevated); color: var(--fg); border-color: var(--muted); }
+
+.yomi-swatches { display: flex; gap: 9px; }
+.yomi-swatch {
+  width: 34px; height: 34px; border-radius: 50%;
+  border: 2px solid transparent;
+  transition: border-color 0.15s;
+}
+.yomi-swatch.active { border-color: var(--fg); }
+
+.yomi-tw-fab {
+  position: relative; width: 46px; height: 46px; border-radius: 50%;
+  display: grid; place-items: center; color: var(--muted);
+  background: var(--surface); border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  transition: color 0.15s;
+}
+.yomi-tw-fab svg { width: 20px; height: 20px; }
+.yomi-tw-fab:hover { color: var(--fg); }
+
+body.yomi-reading .yomi-tw { display: none; }
+
+/* ── Loading spinner ── */
+@keyframes yomi-spin { to { transform: rotate(360deg); } }
+.yomi-spinner {
+  width: 32px; height: 32px;
+  border: 2.5px solid var(--border); border-top-color: var(--accent);
+  border-radius: 50%; animation: yomi-spin 0.7s linear infinite;
+}
+
+/* ── Responsive ── */
+@media (max-width: 959px) { .hide-m { display: none !important; } }
+@media (min-width: 960px) { .hide-d { display: none !important; } }
+
+/* Respect the OS motion preference everywhere (the JS-driven turns handle
+   their own case). The spinner is the one exception — a static ring reads as
+   a hang, so it keeps turning. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+  .yomi-spinner, .yomi-spin { animation: yomi-spin 0.7s linear infinite !important; }
+  .yomi-enter { animation: none; opacity: 1; transform: none; }
+}

@@ -1,0 +1,28 @@
+
+> server@1.0.0 dev
+> tsx watch src/index.ts
+
+◇ injected env (4) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (0) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+Yomi backend engine running on port 5000
+Scrape requested for: onepunch_man%2Fc237 using mangahere
+Scrape requested for: onepunch_man%2Fc237 using mangahere
+Scraping error: Cannot read properties of undefined (reading 'map')
+Scraping error: Cannot read properties of undefined (reading 'map')
+[Chapters] Primary mangadex found 0 chapters. Cross-checking others for "One-Punch Man"...
+[Chapters] Winner is mangahere with 420 chapters.
+Primary provider mangadex failed: socket hang up
+[Chapters] Primary mangadex found 0 chapters. Cross-checking others for "d8a959f7-648e-4c8d-8f23-f1f3f8e129f3"...
+[Chapters] Winner is mangadex with 0 chapters.
+Proxy error for https://mangadex.org/covers/a96676e5-8ae2-425e-b549-7f15dd34a6d8/f8f44329-1dd7-4301-9ec7-a4a76182e8eb.jpg: fetch failed
+Proxy error for https://mangadex.org/covers/fdafcf14-c208-441b-a4f9-825ac3904cfd/c8792d82-c63a-4851-9fcc-d92179612fd3.jpg: terminated
+[Chapters] Primary mangadex found 94 chapters. Cross-checking others for "An Archdemon's Dilemma: How to Love Your Elf Bride"...
+[Chapters] Winner is mangadex with 94 chapters.
+[Chapters] Primary mangadex found 94 chapters. Cross-checking others for "An Archdemon's Dilemma: How to Love Your Elf Bride"...
+[Chapters] Winner is mangadex with 94 chapters.
+Scrape requested for: e3c6d69c-e143-4307-927e-be4200461a5e using mangadex
+Scrape requested for: e3c6d69c-e143-4307-927e-be4200461a5e using mangadex
+[Chapters] Primary mangadex found 94 chapters. Cross-checking others for "An Archdemon's Dilemma: How to Love Your Elf Bride"...
+[Chapters] Winner is mangadex with 94 chapters.
+[Chapters] Primary mangadex found 94 chapters. Cross-checking others for "An Archdemon's Dilemma: How to Love Your Elf Bride"...
+[Chapters] Winner is mangadex with 94 chapters.

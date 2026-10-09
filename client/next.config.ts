@@ -8,10 +8,11 @@ const nextConfig: NextConfig = {
     "localhost:3000"
   ],
   async rewrites() {
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:5000";
     return [
       {
         source: "/api/:path*",
-        destination: "http://127.0.0.1:5000/api/:path*", // Proxy to backend
+        destination: `${backendUrl}/api/:path*`, // Proxy to backend dynamically
       },
     ];
   },

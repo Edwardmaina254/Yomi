@@ -491,7 +491,7 @@ app.get('/api/search', async (req, res) => {
                                     const titleStr = titleObj.en || titleObj['ja-ro'] || Object.values(titleObj)[0] || '';
                                     const coverRel = m.relationships.find((rel: any) => rel.type === 'cover_art');
                                     const coverFile = coverRel?.attributes?.fileName;
-                                    const coverUrl = coverFile ? `https://uploads.mangadex.org/covers/${m.id}/${coverFile}.jpg` : '';
+                                    const coverUrl = coverFile ? `https://uploads.mangadex.org/covers/${m.id}/${coverFile}.256.jpg` : '';
                                     
                                     return {
                                         id: m.id,

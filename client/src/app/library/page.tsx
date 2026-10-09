@@ -243,7 +243,7 @@ export default function LibraryPage() {
           </svg>
         </Link>
         <div className="spacer" />
-        <AccountButton />
+        {/* <AccountButton /> removed per request */}
       </aside>
 
       <div className="yomi-main">

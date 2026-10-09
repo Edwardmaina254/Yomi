@@ -845,7 +845,7 @@ export default function HomePage() {
           <Bookmark size={22} />
         </Link>
         <div className="spacer" />
-        <AccountButton />
+        {/* <AccountButton /> removed per request */}
       </aside>
 
       {/* Main content */}
@@ -873,7 +873,7 @@ export default function HomePage() {
             <p className="eyebrow" suppressHydrationWarning>
               {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
             </p>
-            <h1>{greeting}.</h1>
+            <h1 suppressHydrationWarning>{greeting}.</h1>
           </div>
 
           <div style={{ height: 16 }} />

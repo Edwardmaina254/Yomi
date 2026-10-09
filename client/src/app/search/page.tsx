@@ -274,7 +274,7 @@ function SearchPageContent() {
           <BookmarkShape />
         </Link>
         <div className="spacer" />
-        <AccountButton />
+        {/* <AccountButton /> removed per request */}
       </aside>
 
       <div className="yomi-main">

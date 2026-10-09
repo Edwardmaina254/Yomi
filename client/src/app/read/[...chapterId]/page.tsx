@@ -707,6 +707,9 @@ function ReaderContent() {
        of flashing on every flick. Inline (not a callback) so this effect keeps
        a stable dependency list. */
     let restoring = false;
+    /* Set by cleanup so a rAF restore loop still in flight when the chapter
+       changes (or the reader unmounts) stops touching a detached node. */
+    let stopped = false;
     const dismissChrome = () => {
       if (restoring) return;
       if (hideTimer.current) {
@@ -720,6 +723,15 @@ function ReaderContent() {
       const max = el.scrollHeight - el.clientHeight;
       const ratio = max > 0 ? el.scrollTop / max : 0;
       const cur = Math.max(1, Math.min(total, Math.round(ratio * (total - 1)) + 1));
+      /* A resume is repositioning the reader to a saved page. The scroll bursts
+         that repositioning emits are not a user turn, so they must not be
+         recomputed into `page` — doing that clobbered the restore target before
+         the anchor below had a chance to run, so every refresh snapped to
+         page 1. */
+      if (restoring) {
+        updateProgressUI(cur, total);
+        return;
+      }
       if (cur !== pageRef.current) {
         pageRef.current = cur;
         setPage(cur);
@@ -729,28 +741,61 @@ function ReaderContent() {
       dismissChrome();
     };
 
+    /* Land on the exact saved page, not a ratio approximation of it. A ratio is
+       read against scrollHeight the instant pages mount, but images that have
+       not decoded yet contribute no height — so the first paint under-reports
+       the scroll distance and the reader lands near the top of the chapter.
+       Anchor to the target page's own node instead and re-apply on every frame
+       until that page's image is actually painted. */
+    let userTook = false;
+    const markUser = () => {
+      userTook = true;
+    };
     const autoPlayPos = () => {
-      if (pageRef.current > 1) {
-        const el2 = scrollRef.current;
-        if (!el2) return;
-        restoring = true;
-        const ratio = (pageRef.current - 1) / Math.max(total - 1, 1);
-        el2.scrollTop = ratio * (el2.scrollHeight - el2.clientHeight);
-        window.setTimeout(() => {
-          updateFromScroll();
-          window.setTimeout(() => {
-            restoring = false;
-          }, 200);
-        }, 50);
+      const startPage = pageRef.current;
+      const el2 = scrollRef.current;
+      if (!el2 || startPage <= 1) {
+        restoring = false;
+        updateFromScroll();
+        return;
       }
+      restoring = true;
+      let tries = 0;
+      const settle = () => {
+        restoring = false;
+        updateFromScroll();
+      };
+      const attempt = () => {
+        /* The user took over (a real scroll gesture), the page moved on, or the
+           effect tore down — yield instead of fighting back to the saved target. */
+        if (stopped || userTook || pageRef.current !== startPage) {
+          restoring = false;
+          return;
+        }
+        const node = el2.querySelectorAll<HTMLElement>(".yomi-vpage")[startPage - 1];
+        const im = node?.querySelector("img");
+        if (node) el2.scrollTop = node.offsetTop;
+        const painted = !!im && im.complete && im.naturalHeight > 0;
+        tries += 1;
+        if (painted || tries > 120) {
+          settle();
+          return;
+        }
+        requestAnimationFrame(attempt);
+      };
+      requestAnimationFrame(attempt);
     };
 
-    updateFromScroll();
+    el.addEventListener("wheel", markUser, { passive: true });
+    el.addEventListener("touchstart", markUser, { passive: true });
     autoPlayPos();
     saveOnScrollEnd.current = () => savePosition(pageRef.current, total);
     el.addEventListener("scroll", updateFromScroll, { passive: true });
     el.addEventListener("scrollend", saveOnScrollEnd.current as EventListener, { passive: true });
     return () => {
+      stopped = true;
+      el.removeEventListener("wheel", markUser);
+      el.removeEventListener("touchstart", markUser);
       el.removeEventListener("scroll", updateFromScroll);
       el.removeEventListener("scrollend", saveOnScrollEnd.current as EventListener);
     };
@@ -777,6 +822,48 @@ function ReaderContent() {
   /* Boundary nav is only trustworthy once the mounted pages belong to the
      chapter in the URL — otherwise it describes the chapter we just left. */
   const chapterReady = readyChapterId === chapterId && images.length > 0;
+
+  /* ── Browser tab title ──────────────────────────────────────────────────────
+     Tell the reader what they are reading straight from the tab: the series
+     name and chapter, resolved from the same signals the header uses. Deep
+     links that only carry an id fall back to the recovered title. The layout's
+     metadata title is restored on unmount so leaving the reader cleans up. */
+  useEffect(() => {
+    const prev = document.title;
+    const name = title && title !== "Unknown Title" && title !== "Unknown" ? title : "Reader";
+    const ch = currentIdx >= 0 ? chapters[currentIdx]?.chapterNumber : "";
+    document.title = ch ? `${name} — Ch ${ch} · YOMI` : `${name} · YOMI`;
+    return () => {
+      document.title = prev;
+    };
+  }, [title, currentIdx, chapters]);
+
+  /* ── Keep `?p=` in step with the live page ──────────────────────────────────
+     The reader URL is the source of truth on a cold load, so a stale `p=1`
+     left behind by a chapter turn used to win over the saved position and
+     snap a refresh to the first page. Rewriting the param as the reader settles
+     makes a hard refresh (or a shared URL) reopen the exact panel. Debounced
+     hard: Safari throws if history is written more than ~100×/30s, and vertical
+     scrolling emits page changes far faster than that. */
+  const urlSyncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!chapterReady) return;
+    if (urlSyncTimer.current) clearTimeout(urlSyncTimer.current);
+    urlSyncTimer.current = setTimeout(() => {
+      try {
+        const url = new URL(window.location.href);
+        const p = String(pageRef.current);
+        if (url.searchParams.get("p") === p) return;
+        url.searchParams.set("p", p);
+        /* Preserve Next's router state so the shallow write doesn't detach its
+           history bookkeeping (raw replaceState adds no entry of its own). */
+        window.history.replaceState(window.history.state, "", url.pathname + url.search);
+      } catch {}
+    }, 700);
+    return () => {
+      if (urlSyncTimer.current) clearTimeout(urlSyncTimer.current);
+    };
+  }, [page, chapterReady]);
 
   /* ── Paginated flip engine (imperative — React never owns the scene imgs) ──
      Creating the page <img> elements by hand means a page change can never

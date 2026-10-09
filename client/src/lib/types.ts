@@ -492,7 +492,7 @@ export async function fetchHomeData(
 }> {
   try {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 15000);
+    const timer = setTimeout(() => controller.abort(), 60000);
     const tf = `&timeframe=${timeframe}`;
     const [trendingRes, manhwaRes, comicsRes, latestRes, latestManhwaRes] = await Promise.all([
       fetch(`${API_URL}/api/trending?type=manga${tf}`, { signal: controller.signal }),
@@ -529,7 +529,7 @@ export async function fetchHomeData(
 export async function searchAllSources(term: string): Promise<MangaResult[]> {
   try {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 15000); // 15s timeout
+    const timer = setTimeout(() => controller.abort(), 60000); // 15s timeout
     const res = await fetch(`${API_URL}/api/search?q=${encodeURIComponent(term)}`, {
       signal: controller.signal,
     });

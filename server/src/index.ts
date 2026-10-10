@@ -315,7 +315,8 @@ async function nativeSearchWeebCentral(q: string) {
 }
 
 async function nativeFetchWeebCentralChapters(mangaId: string) {
-    const res = await fetch(`https://weebcentral.com/series/${mangaId}/full-chapter-list`);
+    const realId = mangaId.split('/')[0];
+    const res = await fetch(`https://weebcentral.com/series/${realId}/full-chapter-list`);
     const html = await res.text();
     const chapters = [];
     const regex = /<a href="\/chapters\/([^"]+)"[^>]*>[\s\S]*?<span class="">(.*?)<\/span>/g;

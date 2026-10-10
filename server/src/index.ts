@@ -205,7 +205,7 @@ app.post('/api/scrape', async (req, res) => {
             }
         } else if (providerName === 'mangadex') {
             const mdexRes = await fetch(`https://api.mangadex.org/at-home/server/${decodedUrl}`);
-            const mdexJson = await mdexRes.json();
+            const mdexJson: any = await mdexRes.json();
             if (mdexJson.result === 'ok') {
                 images = mdexJson.chapter.data.map((f: string) => `${mdexJson.baseUrl}/data/${mdexJson.chapter.hash}/${f}`);
             } else {

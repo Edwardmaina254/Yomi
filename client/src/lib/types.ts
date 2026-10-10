@@ -398,6 +398,8 @@ export function getProxyUrl(url: string): string {
     "uploads.mangadex.org",
     "mangadex.org",
     "weebcentral.com",
+    "compsci88.com",
+    "compsci88",
     "meo.comick",
   ];
   if (directHosts.some((h) => url.includes(h))) return url;

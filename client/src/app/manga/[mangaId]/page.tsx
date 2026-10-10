@@ -509,7 +509,7 @@ function MangaDetailsContent() {
                 <h2>About</h2>
                 <div className="yomi-tags">
                   {[
-                    { k: "Provider", v: provider },
+                    { k: "Provider", v: manga?.resolvedProvider || provider },
                     { k: "Chapters", v: String(chapters.length) },
                   ].map((stat) => (
                     <span key={stat.k} className="yomi-chip" style={{ cursor: "default" }}>

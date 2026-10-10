@@ -217,7 +217,12 @@ app.post('/api/scrape', async (req, res) => {
                 throw new Error('MangaDex returned error: ' + JSON.stringify(mdexJson.errors));
             }
         } else if (providerName === 'weebcentral') {
-            const wcRes = await fetch(`https://weebcentral.com/chapters/${decodedUrl}/images?is_prev=False&current_page=1&reading_style=long_strip`);
+            const wcRes = await fetch(`https://weebcentral.com/chapters/${decodedUrl}/images?is_prev=False&current_page=1&reading_style=long_strip`, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Referer': `https://weebcentral.com/chapters/${decodedUrl}`
+                }
+            });
             const html = await wcRes.text();
             const regex = /<img[^>]+src="([^">]+)"/g;
             let match;
@@ -305,23 +310,65 @@ const isNSFW = (m: any) => {
 // Helper to extract string from multi-language title/description objects
 // Helper for blazing fast native WeebCentral search to prevent 6s cold starts
 async function nativeSearchWeebCentral(q: string) {
-    const t = await fetch(`https://weebcentral.com/search/data?text=${encodeURIComponent(q)}&limit=32&offset=0&display_mode=Full+Display`, { headers: { 'HX-Request': 'true' } }).then(r=>r.text());
-    const cheerio = require('cheerio');
-    const $ = cheerio.load(t);
-    const results = $('article.bg-base-300').map((i: any, el: any) => {
-        const link = $(el).find('a').first();
-        const href = link.attr('href');
-        const id = href ? href.split('/series/')[1] : '';
-        const title = $(el).find('section.hidden.lg\\:block .tooltip a').text().trim() || $(el).find('section a .text-ellipsis').text().trim();
-        const image = $(el).find('picture source').first().attr('srcset') || $(el).find('picture img').attr('src');
-        return { id, title, image };
-    }).get();
+    const cleanQ = q.replace(/[^a-zA-Z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+    const searchUrl = (term: string) => `https://weebcentral.com/search/data?text=${encodeURIComponent(term)}&limit=32&offset=0&display_mode=Full+Display`;
+    
+    const fetchTerm = async (term: string) => {
+        try {
+            const res = await fetch(searchUrl(term), {
+                headers: {
+                    'HX-Request': 'true',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Referer': 'https://weebcentral.com/search'
+                }
+            });
+            if (!res.ok) return [];
+            const t = await res.text();
+            const cheerio = require('cheerio');
+            const $ = cheerio.load(t);
+            return $('article.bg-base-300').map((i: any, el: any) => {
+                const link = $(el).find('a[href*="/series/"]').first();
+                const href = link.attr('href');
+                if (!href) return null;
+                const id = href.split('/series/')[1];
+                const title = $(el).find('section.hidden.lg\\:block .tooltip a').text().trim() 
+                           || $(el).find('section a .text-ellipsis').text().trim()
+                           || $(el).find('.text-ellipsis').text().trim()
+                           || $(el).find('a[href*="/series/"]').last().text().trim();
+                const image = $(el).find('picture source').first().attr('srcset') || $(el).find('picture img').attr('src');
+                const typeTip = $(el).find('[data-tip]').attr('data-tip')?.toLowerCase();
+                const type = typeTip === 'manhwa' ? 'manhwa' : (typeTip === 'manhua' ? 'manhua' : 'manga');
+                return { id, title, image, type };
+            }).get().filter(Boolean);
+        } catch (e: any) {
+            console.error('WeebCentral search error:', e.message);
+            return [];
+        }
+    };
+
+    let results = await fetchTerm(cleanQ);
+    if (results.length === 0 && cleanQ !== q) {
+        results = await fetchTerm(q);
+    }
+    if (results.length === 0) {
+        const words = cleanQ.split(' ').filter(w => w.length > 2);
+        if (words.length > 1) {
+            const shortQ = words.slice(0, 2).join(' ');
+            results = await fetchTerm(shortQ);
+        }
+    }
     return { results };
 }
 
 async function nativeFetchWeebCentralChapters(mangaId: string) {
     const realId = mangaId.split('/')[0];
-    const res = await fetch(`https://weebcentral.com/series/${realId}/full-chapter-list`);
+    const res = await fetch(`https://weebcentral.com/series/${realId}/full-chapter-list`, {
+        headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Referer': `https://weebcentral.com/series/${realId}`
+        }
+    });
+    if (!res.ok) return { chapters: [] };
     const html = await res.text();
     const chapters = [];
     const regex = /<a href="\/chapters\/([^"]+)"[^>]*>[\s\S]*?<span class="">(.*?)<\/span>/g;
@@ -557,7 +604,7 @@ app.get('/api/search', async (req, res) => {
             } else {
                 searchPromise = p.instance.search(q as string).then(data => ({ providerName: p.name, data }));
             }
-            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Provider timeout')), 2500));
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Provider timeout')), 7000));
             return Promise.race([searchPromise, timeoutPromise]);
         });
 
@@ -982,23 +1029,28 @@ app.get('/api/manga/:id/chapters', async (req, res) => {
             .map(r => {
                 const enrichedData = {
                     ...r!.data,
+                    id: decodedId,
+                    title: (typeof data?.title === 'string' ? data.title : data?.title?.en) || searchTitle,
                     image: data?.image || r!.data.image,
                     altTitles: r!.data.altTitles?.length ? r!.data.altTitles : data?.altTitles,
-                    type: r!.data.type && r!.data.type !== 'manga' ? r!.data.type : data?.type
+                    type: r!.data.type && r!.data.type !== 'manga' ? r!.data.type : data?.type,
+                    resolvedProvider: r!.provider
                 };
                 const validChapters = (enrichedData.chapters || []).filter((c: any) => c.pages !== 0);
                 return { provider: r!.provider, data: { ...enrichedData, chapters: validChapters }, count: validChapters.length };
             });
 
-        fallbackResults.push({ provider: providerName as string, data: { ...data, chapters }, count: chapters.length });
+        fallbackResults.push({ provider: providerName as string, data: { ...data, chapters, resolvedProvider: providerName }, count: chapters.length });
         
         // Prioritize providers using a robust scoring system
+        // WEEBCENTRAL IS KING: WeebCentral is always preferred if it has chapters
         const getScore = (r: any) => {
             if (r.count === 0) return 0; // Never reward a provider that has 0 chapters
             let score = r.count * 10;
-            if (r.provider === 'weebcentral') score += 1000; // Bonus for reliability and completeness
-            if (r.provider === 'mangahere') score += 500; // High reliability
-            if (r.provider === providerName && providerName !== 'mangadex') score += 50000;
+            if (r.provider === 'weebcentral') score += 1000000; // King of chapters, completeness & reliability
+            if (r.provider === 'mangapill') score += 5000;
+            if (r.provider === 'mangadex') score += 100;
+            if (r.provider === providerName && providerName !== 'mangadex' && providerName !== 'weebcentral') score += 10000;
             return score;
         };
 

@@ -884,7 +884,6 @@ function ReaderContent() {
     if (!im) {
       im = document.createElement("img");
       im.draggable = false;
-      im.referrerPolicy = "no-referrer";
       im.alt = "";
       wrap.appendChild(im);
     }
@@ -1885,7 +1884,6 @@ function ReaderContent() {
                 <img
                   src={getProxyUrl(src)}
                   alt={`Page ${i + 1}`}
-                  referrerPolicy="no-referrer"
                   /* The opening slice must never show a blank gap while the
                      lazy loader warms up. */
                   loading={i < 2 ? "eager" : "lazy"}

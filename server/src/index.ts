@@ -164,7 +164,12 @@ app.post('/api/scrape', async (req, res) => {
     console.log(`Scrape requested for: ${url} using ${providerName}`);
 
     try {
-        const decodedUrl = decodeURIComponent(url);
+        let decodedUrl = url;
+        let prevUrl;
+        do {
+            prevUrl = decodedUrl;
+            decodedUrl = decodeURIComponent(decodedUrl);
+        } while (decodedUrl !== prevUrl);
         let images: string[] = [];
 
         if (providerName === 'mangahere') {

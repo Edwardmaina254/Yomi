@@ -182,7 +182,13 @@ function ReaderContent() {
   );
 
   const chapterIdArray = (params?.chapterId as string[]) || [];
-  const chapterId = chapterIdArray.join("/");
+  let chapterIdRaw = chapterIdArray.join("/");
+  let prevId;
+  do {
+      prevId = chapterIdRaw;
+      chapterIdRaw = decodeURIComponent(chapterIdRaw);
+  } while (chapterIdRaw !== prevId);
+  const chapterId = chapterIdRaw;
 
   const { theme, toggleTheme } = useTheme();
   const [images, setImages] = useState<string[]>([]);

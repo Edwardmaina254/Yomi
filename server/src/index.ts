@@ -70,6 +70,8 @@ app.use(cors({
 app.use(express.json());
 
 // Proxy endpoint to bypass CORS and hotlinking restrictions
+app.get('/health', (req, res) => res.status(200).send('OK'));
+
 app.get('/api/proxy', async (req, res) => {
     let targetUrl = req.query.url as string;
     

@@ -203,6 +203,25 @@ app.post('/api/scrape', async (req, res) => {
             if (images.length === 0) {
                 throw new Error('Failed to unpack MangaHere images');
             }
+        } else if (providerName === 'mangadex') {
+            const mdexRes = await fetch(`https://api.mangadex.org/at-home/server/${decodedUrl}`);
+            const mdexJson = await mdexRes.json();
+            if (mdexJson.result === 'ok') {
+                images = mdexJson.chapter.data.map((f: string) => `${mdexJson.baseUrl}/data/${mdexJson.chapter.hash}/${f}`);
+            } else {
+                throw new Error('MangaDex returned error: ' + JSON.stringify(mdexJson.errors));
+            }
+        } else if (providerName === 'weebcentral') {
+            const wcRes = await fetch(`https://weebcentral.com/chapters/${decodedUrl}/images?is_prev=False&current_page=1&reading_style=long_strip`);
+            const html = await wcRes.text();
+            const regex = /<img[^>]+src="([^">]+)"/g;
+            let match;
+            while ((match = regex.exec(html)) !== null) {
+                const url = match[1];
+                if (!url.includes('brand.png') && !url.includes('404.png')) {
+                    images.push(url);
+                }
+            }
         } else {
             const provider = getProvider(providerName);
             const pages = await provider.fetchChapterPages(decodedUrl);
@@ -293,6 +312,25 @@ async function nativeSearchWeebCentral(q: string) {
         return { id, title, image };
     }).get();
     return { results };
+}
+
+async function nativeFetchWeebCentralChapters(mangaId: string) {
+    const res = await fetch(`https://weebcentral.com/series/${mangaId}/full-chapter-list`);
+    const html = await res.text();
+    const chapters = [];
+    const regex = /<a href="\/chapters\/([^"]+)"[^>]*>[\s\S]*?<span class="">(.*?)<\/span>/g;
+    let match;
+    while ((match = regex.exec(html)) !== null) {
+        chapters.push({
+            id: match[1],
+            chapterNumber: match[2].replace('Chapter ', '').trim(),
+            title: match[2].trim(),
+            pages: 1,
+            createdAt: new Date().toISOString(),
+            provider: 'weebcentral'
+        });
+    }
+    return { chapters };
 }
 
 const extractString = (val: any): string => {
@@ -745,10 +783,15 @@ app.get('/api/manga/:id/chapters', async (req, res) => {
 
 
         // PARALLEL EXECUTION: Start the primary provider and fallbacks at the EXACT SAME TIME!
-        let dataPromise = provider.fetchMangaInfo(decodedId).catch((e: any) => {
-            console.error(`Primary provider ${providerName} failed:`, e.message);
-            return { title: decodedId, chapters: [] } as any;
-        });
+        let dataPromise = providerName === 'weebcentral' 
+            ? nativeFetchWeebCentralChapters(decodedId).catch((e: any) => {
+                console.error(`Primary provider WeebCentral failed:`, e.message);
+                return { title: decodedId, chapters: [] } as any;
+            })
+            : provider.fetchMangaInfo(decodedId).catch((e: any) => {
+                console.error(`Primary provider ${providerName} failed:`, e.message);
+                return { title: decodedId, chapters: [] } as any;
+            });
 
         let externalIdsPromise = Promise.resolve(new Set());
         let mdexInfoPromise: Promise<any> = Promise.resolve(null);
@@ -815,7 +858,7 @@ app.get('/api/manga/:id/chapters', async (req, res) => {
                     });
                     
                     if (!best) return null;
-                    const mangaData = await p.instance().fetchMangaInfo(best.id);
+                    const mangaData = p.name === 'weebcentral' ? await nativeFetchWeebCentralChapters(best.id) : await p.instance().search(providerSearchQuery).then(() => p.instance().fetchMangaInfo(best.id));
                     return { provider: p.name, data: mangaData };
                 } catch (e: any) {
                     return null;
@@ -915,7 +958,7 @@ app.get('/api/manga/:id/chapters', async (req, res) => {
                     });
                     
                     if (!best) return null;
-                    const mangaData = await p.instance().fetchMangaInfo(best.id);
+                    const mangaData = p.name === 'weebcentral' ? await nativeFetchWeebCentralChapters(best.id) : await p.instance().fetchMangaInfo(best.id);
                     return { provider: p.name, data: mangaData };
                 } catch (e: any) {
                     return null;

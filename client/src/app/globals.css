@@ -1353,9 +1353,9 @@ body.yomi-reading { overflow: hidden; }
 .yomi-drawer-head b { font-family: var(--font-display); font-size: 1rem; font-weight: 600; }
 .yomi-drawer-head .yomi-iconbtn { width: 36px; height: 36px; }
 .yomi-drawer-tools {
-  /* Five tools, five columns — a 4-column grid stranded the theme toggle in a
-     half-empty second row. */
-  display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px;
+  /* Six tools (Auto, Vertical, Page flip, Lamp, Fit, Theme) in a 3×2 grid —
+     large enough tiles to read, no half-empty stranded row. */
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px;
   padding-bottom: 16px; margin-bottom: 14px;
   border-bottom: 1px solid var(--border);
 }

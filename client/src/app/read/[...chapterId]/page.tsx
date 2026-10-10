@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { API_URL, getProxyUrl, getMangaType, getMangaTitle, extractString, looksLikeId, modeForType, detectTypeFromTitle, detectTypeFromGeometry, detectKnownWebtoon, rememberType, rememberTitle, findChapterById, getModeOverride, rememberModeOverride, type Chapter } from "@/lib/types";
+import { API_URL, getProxyUrl, getMangaType, getMangaTitle, extractString, looksLikeId, modeForType, detectTypeFromTitle, detectTypeFromGeometry, detectKnownWebtoon, rememberType, rememberTitle, findChapterById, getModeOverride, rememberModeOverride, clearModeOverride, type Chapter } from "@/lib/types";
 import { navReplace } from "@/lib/navHistory";
 import { useNav } from "@/contexts/NavContext";
 import gsap from "gsap";
@@ -24,6 +24,7 @@ import {
   Home,
   Maximize,
   Minimize,
+  Wand2,
 } from "lucide-react";
 
 type Mode = "vertical" | "paginated";
@@ -1612,18 +1613,16 @@ function ReaderContent() {
     });
   }, [page, images]);
 
+  /* An explicit per-title choice: remembered for THIS series only. It
+     deliberately does NOT write the global `yomi.mode` default — treating "I
+     read this one title vertically" as the fallback for every untyped title is
+     what silently turned unrelated manga into scroll mode. The type registry is
+     never touched either: a manual choice is a preference, not a fact, and
+     writing it into the registry let the next auto-detect pass overwrite it. */
   const toggleMode = (targetMode?: Mode) => {
     const next = targetMode || (mode === "vertical" ? "paginated" : "vertical");
     setMode(next);
 
-    /* Two stores, two jobs. The global default is the fallback for titles we
-       know nothing about; the per-title override is what actually sticks for
-       this series. Neither writes to the type registry — doing that was what
-       made the mode feel broken, because the next auto-detect pass would
-       "correct" the type and flip the reader back mid-chapter. */
-    try {
-      localStorage.setItem("yomi.mode", next);
-    } catch {}
     if (sourceMangaId) {
       rememberModeOverride(sourceMangaId, next, provider, title);
     }
@@ -1637,6 +1636,23 @@ function ReaderContent() {
         el.scrollTop = ratio * (el.scrollHeight - el.clientHeight);
       }
     }
+  };
+
+  /* Hand this title back to auto-detection: drop any standing per-title
+     override so the probe/geometry/`mt=` chain governs again, then re-derive the
+     mode from the best evidence already in hand (authoritative verdict, settled
+     webtoon fact, provider hint). This is the escape hatch for a title a stray
+     tap once pinned to the wrong mode. */
+  const setAutoMode = () => {
+    clearModeOverride(sourceMangaId, provider, title || undefined);
+    modeOverrideRef.current = null;
+    const detected =
+      modeForType(authoritativeRef.current) ||
+      modeForType(detectKnownWebtoon(title || "")) ||
+      modeForType(typeParam) ||
+      modeForType(searchParams.get("mt") || undefined) ||
+      "paginated";
+    setMode(detected);
   };
 
   /* ── Vertical-mode immersive toggle ───────────────────────────────────────
@@ -1743,6 +1759,17 @@ function ReaderContent() {
         </div>
 
         <div className="yomi-drawer-tools">
+          <button
+            className="yomi-mini"
+            onClick={() => {
+              setAutoMode();
+              setMenuOpen(false);
+            }}
+            title="Auto-detect reading mode"
+          >
+            <Wand2 size={17} />
+            <span>Auto</span>
+          </button>
           <button
             className={`yomi-mini ${mode === "vertical" ? "active" : ""}`}
             onClick={() => {

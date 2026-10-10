@@ -252,7 +252,7 @@ function MangaCard({
         <span className="rank">{String(i + 1).padStart(2, "0")}</span>
       )}
       <Link
-        href={`/manga/${encodeURIComponent(manga.id)}?provider=${manga.provider}`}
+        href={`/manga/${encodeURIComponent(manga.id)}?provider=${manga.provider}&t=${encodeURIComponent(manga.title)}`}
         style={{ display: "block", borderRadius: "var(--radius)" }}
       >
         <CoverArt
@@ -576,7 +576,7 @@ function SpotlightCarousel({ pool }: { pool: MangaResult[] }) {
               )}
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <Link
-                  href={`/manga/${encodeURIComponent(d.id)}?provider=${d.provider}`}
+                  href={`/manga/${encodeURIComponent(d.id)}?provider=${d.provider}&t=${encodeURIComponent(d.title)}`}
                   className="yomi-btn yomi-btn-primary"
                 >
                   <Bookmark size={15} /> Details
@@ -808,7 +808,7 @@ export default function HomePage() {
   const renderDropRow = (manga: MangaResult) => (
     <Link
       key={manga.id}
-      href={`/manga/${encodeURIComponent(manga.id)}?provider=${manga.provider}`}
+      href={`/manga/${encodeURIComponent(manga.id)}?provider=${manga.provider}&t=${encodeURIComponent(manga.title)}`}
       className="yomi-drow"
       style={{ width: "100%", display: "flex", textDecoration: "none" }}
     >

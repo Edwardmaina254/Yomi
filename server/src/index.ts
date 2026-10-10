@@ -94,7 +94,7 @@ app.get('/api/proxy', async (req, res) => {
         const parsedUrl = new URL(targetUrl);
         const host = parsedUrl.hostname.toLowerCase();
         const allowedKeywords = [
-            'mangadex', 'mangapill', 'weebcentral', 'compsci88', 'lastation', 'lowee', 'planeptune', 'leanbox',
+            'mangadex', 'mangapill', 'readdetectiveconan', 'weebcentral', 'compsci88', 'lastation', 'lowee', 'planeptune', 'leanbox',
             'comick', 'mangahere', 'zjcdn', 'fmcdn', 'webtoon', 'pstatic', 'myanimelist'
         ];
         if (!allowedKeywords.some(keyword => host.includes(keyword))) {

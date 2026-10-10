@@ -900,18 +900,21 @@ app.get('/api/manga/:id/chapters', async (req, res) => {
         let chapters = (data.chapters || []).filter((c: any) => c.pages !== 0);
         
         // NOW we can update searchTitle using the freshly fetched data if we didn't have it!
-        if (!reqTitle && data.title) {
-            searchTitle = typeof data.title === 'string' ? data.title : (data.title as any)?.en || '';
-        }
-        if (!searchTitle && data.altTitles && Array.isArray(data.altTitles)) {
-            const enObj = data.altTitles.find((t: any) => t.en);
-            if (enObj) searchTitle = enObj.en;
-            else if (data.altTitles.length > 0) {
-                const first = data.altTitles[0];
-                searchTitle = first.en || first.ko || first[Object.keys(first)[0]] || '';
+        if (!reqTitle) {
+            if (data.title && typeof data.title === 'string') {
+                searchTitle = data.title;
+            } else if (data.title && (data.title as any).en) {
+                searchTitle = (data.title as any).en;
+            } else if (data.altTitles && Array.isArray(data.altTitles)) {
+                const enObj = data.altTitles.find((t: any) => t.en);
+                if (enObj) searchTitle = enObj.en;
+                else if (data.altTitles.length > 0) {
+                    const first = data.altTitles[0];
+                    searchTitle = first.en || first.ko || first[Object.keys(first)[0]] || searchTitle;
+                }
             }
         }
-        if (!searchTitle) searchTitle = decodedId;
+        if (!searchTitle || searchTitle === decodedId) searchTitle = reqTitle as string || decodedId;
 
         // Fast path ONLY for WeebCentral since it has reliable images (Comick images are blocked by Cloudflare)
         if (providerName === 'weebcentral' && chapters.length > 0) {

@@ -519,7 +519,7 @@ app.get('/api/search', async (req, res) => {
     const providers = [
         { name: 'weebcentral', instance: new MANGA.WeebCentral() },
         { name: 'mangadex', instance: new MANGA.MangaDex() },
-        { name: 'comick', instance: createComicK() }
+        { name: 'mangapill', instance: new MANGA.MangaPill() }
     ];
 
     try {

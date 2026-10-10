@@ -695,7 +695,7 @@ const createComicK = () => {
 
 const FALLBACK_PROVIDERS = [
     { name: 'weebcentral', instance: () => new MANGA.WeebCentral() },
-    { name: 'mangahere', instance: () => new MANGA.MangaHere() },
+    { name: 'mangapill', instance: () => new MANGA.MangaPill() },
     { name: 'mangadex', instance: () => new MANGA.MangaDex() },
     { name: 'comick', instance: createComicK }
 ];

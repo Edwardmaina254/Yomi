@@ -581,6 +581,7 @@ app.get('/api/search', async (req, res) => {
     // The backend gracefully falls back to WeebCentral/MangaHere internally when chapters are requested!
     const providers = [
         { name: 'weebcentral', instance: new MANGA.WeebCentral() },
+        { name: 'comick', instance: createComicK() },
         { name: 'mangadex', instance: new MANGA.MangaDex() },
         { name: 'mangapill', instance: new MANGA.MangaPill() }
     ];
@@ -661,7 +662,7 @@ app.get('/api/search', async (req, res) => {
         });
 
         let finalResults = groups.map(group => {
-            const order: Record<string, number> = { 'weebcentral': 5, 'mangadex': 4, 'comick': 3, 'mangahere': 2, 'mangapill': 1 };
+            const order: Record<string, number> = { 'weebcentral': 5, 'comick': 4, 'mangadex': 3, 'mangapill': 2, 'mangahere': 1 };
             group.sort((a, b) => (order[b.provider] || 0) - (order[a.provider] || 0));
             
             const best = group[0];
@@ -719,53 +720,90 @@ app.get('/api/search', async (req, res) => {
 
 const createComicK = () => {
     const i = new MANGA.ComicK();
-    const origFetch = (i as any).fetchMangaInfo;
     (i as any).fetchMangaInfo = async (mangaId: string) => {
+        const cleanId = mangaId.split('/')[0];
+        let data: any;
         try {
-            return await origFetch.call(i, mangaId);
-        } catch (e: any) {
-            if (e.message.includes('md_titles.map')) {
-                const data = await (i as any).getComicData(mangaId);
-                data.md_titles = []; // Force empty array
-                const links = Object.values(data.links ?? []).filter(link => link !== null);
-                const mangaInfo = {
-                    id: data.slug,
-                    title: data.title,
-                    altTitles: [],
-                    description: data.desc,
-                    genres: data.md_comic_md_genres?.map((g: any) => g.md_genres.name),
-                    status: data.status === 1 ? 'Ongoing' : 'Completed',
-                    image: data.default_thumbnail,
-                    malId: data.links?.mal,
-                    links: links,
-                    chapters: [],
-                } as any;
-                try {
-                    const allChapters = await (i as any).fetchAllChapters(mangaInfo.id, 1);
-                    for (const chapter of allChapters) {
-                        mangaInfo.chapters.push({
-                            id: `${mangaInfo.id}/${chapter.hid}-chapter-${chapter.chap}-${chapter.lang}`,
-                            title: chapter.title ?? chapter.chap,
-                            chapterNumber: chapter.chap,
-                            volumeNumber: chapter.vol,
-                            releaseDate: chapter.created_at,
-                            lang: chapter.lang,
-                        });
-                    }
-                } catch {}
-                return mangaInfo;
-            }
-            throw e;
+            data = await (i as any).getComicData(cleanId);
+        } catch {
+            const res = await fetch(`https://comick.art/comic/${cleanId}`, {
+                headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+            });
+            const html = await res.text();
+            const cheerio = require('cheerio');
+            const $ = cheerio.load(html);
+            data = JSON.parse($("script[id='comic-data']").text());
         }
+        
+        const slug = data?.comic?.slug || data?.slug || cleanId;
+        const comicObj = data?.comic || data || {};
+        const mangaInfo = {
+            id: slug,
+            title: comicObj.title || cleanId,
+            altTitles: comicObj.md_titles || [],
+            description: comicObj.desc || '',
+            genres: comicObj.md_comic_md_genres?.map((g: any) => g.md_genres?.name).filter(Boolean) || [],
+            status: comicObj.status === 1 ? 'Ongoing' : 'Completed',
+            image: comicObj.default_thumbnail || `https://cdn2.comicknew.pictures/${slug}/covers/${comicObj.md_covers?.[0]?.bkey || ''}.webp`,
+            malId: comicObj.links?.mal,
+            chapters: [] as any[],
+        };
+
+        // Fetch all chapter pages in parallel batches (up to 40 pages = 2400 chapters!)
+        const pageBatches = [
+            Array.from({ length: 15 }, (_, idx) => idx + 1),
+            Array.from({ length: 15 }, (_, idx) => idx + 16),
+            Array.from({ length: 15 }, (_, idx) => idx + 31)
+        ];
+
+        const seenHids = new Set<string>();
+        const seenChapters = new Set<string>();
+
+        for (const batch of pageBatches) {
+            let foundInBatch = 0;
+            const batchResults = await Promise.allSettled(
+                batch.map(p => fetch(`https://comick.art/api/comics/${slug}/chapter-list?page=${p}`, {
+                    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+                }).then(r => r.json()).then((j: any) => j.data || []))
+            );
+
+            for (const res of batchResults) {
+                if (res.status === 'fulfilled' && Array.isArray(res.value)) {
+                    for (const ch of res.value) {
+                        if (ch.lang === 'en' && !seenHids.has(ch.hid)) {
+                            seenHids.add(ch.hid);
+                            const chapNum = String(ch.chap ?? '0');
+                            if (!seenChapters.has(chapNum)) {
+                                seenChapters.add(chapNum);
+                                foundInBatch++;
+                                mangaInfo.chapters.push({
+                                    id: `${slug}/${ch.hid}-chapter-${ch.chap}-en`,
+                                    title: ch.title ? `Chapter ${ch.chap} - ${ch.title}` : `Chapter ${ch.chap}`,
+                                    chapterNumber: chapNum,
+                                    volumeNumber: ch.vol,
+                                    releaseDate: ch.created_at,
+                                    lang: ch.lang,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (foundInBatch === 0) break;
+        }
+
+        mangaInfo.chapters.sort((a, b) => parseFloat(b.chapterNumber || '0') - parseFloat(a.chapterNumber || '0'));
+        return mangaInfo;
     };
     return i;
 };
 
 const FALLBACK_PROVIDERS = [
     { name: 'weebcentral', instance: () => new MANGA.WeebCentral() },
+    { name: 'comick', instance: createComicK },
     { name: 'mangapill', instance: () => new MANGA.MangaPill() },
-    { name: 'mangadex', instance: () => new MANGA.MangaDex() },
-    { name: 'comick', instance: createComicK }
+    { name: 'mangadex', instance: () => new MANGA.MangaDex() }
 ];
 
 const mapChapters = (data: any, resolvedProvider: string) => ({
@@ -825,7 +863,7 @@ const mapChapters = (data: any, resolvedProvider: string) => ({
 });
 
 // Chapters endpoint — with cross-provider fallback for maximum chapter coverage
-app.get('/api/manga/:id/chapters', async (req, res) => {
+app.get(['/api/manga/:id/chapters', '/api/manga/:id/:sub/chapters', '/api/manga/*/chapters'], async (req, res) => {
     const { provider: providerName, title: reqTitle } = req.query;
     const fullId = req.originalUrl.split('/api/manga/')[1].split('/chapters')[0];
     const decodedId = decodeURIComponent(fullId);
@@ -1064,6 +1102,7 @@ app.get('/api/manga/:id/chapters', async (req, res) => {
             if (r.count === 0) return 0; // Never reward a provider that has 0 chapters
             let score = r.count * 10;
             if (r.provider === 'weebcentral') score += 1000000; // King of chapters, completeness & reliability
+            if (r.provider === 'comick') score += 50000; // Complete chapter coverage across all pages!
             if (r.provider === 'mangapill') score += 5000;
             if (r.provider === 'mangadex') score += 100;
             if (r.provider === providerName && providerName !== 'mangadex' && providerName !== 'weebcentral') score += 10000;

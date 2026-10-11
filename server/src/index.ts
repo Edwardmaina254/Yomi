@@ -730,9 +730,10 @@ const createComicK = () => {
                 headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
             });
             const html = await res.text();
-            const cheerio = require('cheerio');
-            const $ = cheerio.load(html);
-            data = JSON.parse($("script[id='comic-data']").text());
+            const match = html.match(/<script id=['"]comic-data['"][^>]*>([\s\S]*?)<\/script>/);
+            if (match) {
+                data = JSON.parse(match[1]);
+            }
         }
         
         const slug = data?.comic?.slug || data?.slug || cleanId;
@@ -863,9 +864,9 @@ const mapChapters = (data: any, resolvedProvider: string) => ({
 });
 
 // Chapters endpoint — with cross-provider fallback for maximum chapter coverage
-app.get(['/api/manga/:id/chapters', '/api/manga/:id/:sub/chapters', '/api/manga/*/chapters'], async (req, res) => {
+app.get(/^\/api\/manga\/(.+)\/chapters$/, async (req, res) => {
     const { provider: providerName, title: reqTitle } = req.query;
-    const fullId = req.originalUrl.split('/api/manga/')[1].split('/chapters')[0];
+    const fullId = req.params[0];
     const decodedId = decodeURIComponent(fullId);
 
     const cacheKey = `chapters-${providerName}-${decodedId}`;

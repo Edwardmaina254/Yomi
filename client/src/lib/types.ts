@@ -226,6 +226,19 @@ export function rememberTypes(
 }
 
 export function getMangaType(id: string, provider?: string, title?: string | null): string {
+  if (title) {
+    const km = detectKnownManga(title);
+    if (km) return km;
+    const kw = detectKnownWebtoon(title);
+    if (kw) return kw;
+  }
+  const slug = String(id).split("/").pop() || "";
+  if (slug) {
+    const kmSlug = detectKnownManga(slug);
+    if (kmSlug) return kmSlug;
+    const kwSlug = detectKnownWebtoon(slug);
+    if (kwSlug) return kwSlug;
+  }
   if (typeStore[id]) return typeStore[id];
   /* ids from different providers for the same series never match, but the
      title is stable — so we key the registry on the normalized title too and
@@ -235,7 +248,6 @@ export function getMangaType(id: string, provider?: string, title?: string | nul
     const tk = "t:" + normalizeKey(title);
     if (typeStore[tk]) return typeStore[tk];
   }
-  const slug = String(id).split("/").pop() || "";
   if (slug && typeStore[slug]) return typeStore[slug];
   if (provider === "jikan") return "manga"; /* Jikan is manga-only */
   /* weebcentral series slugs occasionally embed the format in the path */
@@ -754,6 +766,11 @@ export async function detectTypeFromTitle(
      provider reports "The God of High School" as a webtoon, yet it plainly is one.
      Resolving it here also means the reader can pick the right mode immediately
      instead of flipping a moment after the chapter opens. */
+  const knownM = detectKnownManga(title);
+  if (knownM) {
+    detectCache[key] = knownM;
+    return knownM;
+  }
   const known = detectKnownWebtoon(title);
   if (known) {
     detectCache[key] = known;
@@ -800,15 +817,9 @@ export async function detectTypeFromTitle(
       return "";
     }
 
-    /* Prefer a ko/zh original among the matched pool — the Korean original of
-       a manhwa usually carries the English title as its primary title too. */
     const pool = exact.length ? exact : viaAltLang;
-    const koOrZh =
-      pool.find((d: any) => {
-        const l = d.attributes?.originalLanguage;
-        return l === "ko" || l === "zh";
-      }) || null;
-    const bestMatch = koOrZh || pool[0];
+    // Canonical primary matches always win. Only if we had to search alt titles do we check ko/zh preference.
+    const bestMatch = primary.length ? primary[0] : (pool.find((d: any) => d.attributes?.originalLanguage === "ko" || d.attributes?.originalLanguage === "zh") || pool[0]);
     const resolved = typeFromRecordOrigin(bestMatch);
     /* Only a record that actually names an origin may write to the cache — an
        origin-less match is not a verdict, and caching a fabricated "manga" here
@@ -896,6 +907,65 @@ export function detectKnownWebtoon(title: string): "manhwa" | "manhua" | "" {
      internal "the" because its own entry is keyed without one either way. */
   const stripped = key.replace(/^(the|a|an)/, "");
   return (stripped && KNOWN_WEBTOONS[stripped]) || "";
+}
+
+const KNOWN_MANGA: Record<string, "manga"> = {
+  onepiece: "manga",
+  bleach: "manga",
+  blackclover: "manga",
+  naruto: "manga",
+  dragonball: "manga",
+  dragonballz: "manga",
+  dragonballsuper: "manga",
+  jujutsukaisen: "manga",
+  berserk: "manga",
+  vagabond: "manga",
+  chainsawman: "manga",
+  attackontitan: "manga",
+  shingekinokyojin: "manga",
+  hunterxhunter: "manga",
+  myheroacademia: "manga",
+  bokunoheroacademia: "manga",
+  tokyoghoul: "manga",
+  demonslayer: "manga",
+  kimetsunoyaiba: "manga",
+  vinlandsaga: "manga",
+  jojosbizarreadventure: "manga",
+  jojo: "manga",
+  slamdunk: "manga",
+  monster: "manga",
+  gintama: "manga",
+  deathnote: "manga",
+  fairytail: "manga",
+  haikyuu: "manga",
+  bluelock: "manga",
+  spyxfamily: "manga",
+  frieren: "manga",
+  sousounofrieren: "manga",
+  dandadan: "manga",
+  kingdom: "manga",
+  fullmetalalchemist: "manga",
+  boruto: "manga",
+  tokyorevengers: "manga",
+  onepunchman: "manga",
+  drstone: "manga",
+  fireforce: "manga",
+  souleater: "manga",
+  claymore: "manga",
+  gantz: "manga",
+  dgrayman: "manga",
+  inuyasha: "manga",
+  rurounikenshin: "manga",
+  yuyuhakusho: "manga",
+};
+
+export function detectKnownManga(title: string): "manga" | "" {
+  const key = webtoonAliasKey(extractString(title));
+  if (!key) return "";
+  const direct = KNOWN_MANGA[key];
+  if (direct) return direct;
+  const stripped = key.replace(/^(the|a|an)/, "");
+  return (stripped && KNOWN_MANGA[stripped]) || "";
 }
 
 export const MD_TAGS_MAP: Record<string, string> = {

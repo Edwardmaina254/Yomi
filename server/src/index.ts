@@ -250,25 +250,41 @@ app.post('/api/scrape', async (req, res) => {
 });
 
 const detectType = (manga: any): string => {
-    if (manga.type && typeof manga.type === 'string' && manga.type.toLowerCase() !== 'manga' && manga.type.toLowerCase() !== 'comic') {
+    // 1. Direct explicit original language (e.g. MangaDex, AniList, AL/MAL)
+    const lang = manga.originalLanguage || manga.attributes?.originalLanguage;
+    if (lang === 'ja') return 'manga';
+    if (lang === 'ko') return 'manhwa';
+    if (lang === 'zh' || lang === 'zh-hk') return 'manhua';
+    if (lang === 'en') return 'comic';
+
+    // 2. WeebCentral data-tip or tag
+    if (manga.type && typeof manga.type === 'string') {
         const t = manga.type.toLowerCase();
-        if (t === 'manhwa' || t === 'manhua') return t;
+        if (t === 'manhwa' || t === 'manhua' || t === 'comic' || t === 'manga') return t;
     }
-    
-    if (manga.altTitles && Array.isArray(manga.altTitles)) {
-        if (manga.altTitles.some((t: any) => t.ko)) return 'manhwa';
-        if (manga.altTitles.some((t: any) => t.zh || t['zh-hk'] || t['zh-ro'])) return 'manhua';
-    }
-    
+
+    // 3. Scan native Japanese text (Hiragana/Katakana) — Japanese manga ALWAYS have Kana!
     const textToScan = [
         typeof manga.title === 'string' ? manga.title : '',
         manga.title?.native || '',
+        manga.title?.ja || '',
+        manga.title?.romaji || '',
         ...(manga.altTitles || []).flatMap((t: any) => Object.values(t))
     ].join(' ');
 
-    if (/[\uAC00-\uD7AF]/.test(textToScan)) return 'manhwa';
     if (/[\u3040-\u309F\u30A0-\u30FF]/.test(textToScan)) return 'manga';
-    if (/[\u4E00-\u9FFF]/.test(textToScan)) return 'manhua';
+
+    // 4. Korean Hangul in the primary title ONLY if there is no Japanese
+    const titleOnly = typeof manga.title === 'string' ? manga.title : (manga.title?.en || '');
+    if (/[\uAC00-\uD7AF]/.test(titleOnly)) return 'manhwa';
+    if (/[\u4E00-\u9FFF]/.test(titleOnly)) return 'manhua';
+
+    // 5. Check if tags specify format
+    if (manga.tags && Array.isArray(manga.tags)) {
+        if (manga.tags.some((t: any) => t?.attributes?.name?.en === 'Web Comic' || t?.attributes?.name?.en === 'Long Strip')) {
+            if (lang !== 'ja') return 'manhwa';
+        }
+    }
 
     return 'manga';
 };

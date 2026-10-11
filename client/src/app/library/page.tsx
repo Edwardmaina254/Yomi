@@ -6,6 +6,8 @@ import { useTheme } from "@/contexts/ThemeContext";
 import {
   API_URL,
   detectTypeFromTitle,
+  detectKnownManga,
+  detectKnownWebtoon,
   extractString,
   getMangaTitle,
   getProxyUrl,
@@ -41,11 +43,12 @@ function loadLib(): LibItem[] {
     if (looksLikeId(title) || !title || title === "Unknown Title") {
       title = getMangaTitle(lookupId, x.provider) || title;
     }
-    // Trust typeStore first. If it's missing, keep explicit manhwa/manhua but discard legacy "manga" fallbacks.
-    let resolvedType = getMangaType(lookupId, x.provider, title);
+    // Trust known manga/webtoon facts first!
+    const km = detectKnownManga(title);
+    const kw = detectKnownWebtoon(title);
+    let resolvedType = km || kw || getMangaType(lookupId, x.provider, title);
     if (!resolvedType) {
-      const raw = (x.type || "").trim().toLowerCase();
-      resolvedType = raw === "manga" ? "" : (x.type || "");
+      resolvedType = (x.type || "").trim().toLowerCase();
     }
     return {
       id: x.id,
@@ -104,6 +107,16 @@ async function healStoredTitles() {
           
           if (store === "yomi.continue" && (!x.chapter || looksLikeId(x.chapter))) {
             needsHeal = true;
+          }
+
+          // Heal misclassified manga types (e.g. Bleach, One Piece, Black Clover)
+          const km = detectKnownManga(x.title);
+          const kw = detectKnownWebtoon(x.title);
+          const correctType = km || kw;
+          if (correctType && x.type !== correctType) {
+            x.type = correctType;
+            rememberType(lookupId, correctType, x.title);
+            dirty = true;
           }
 
           if (needsHeal) {
@@ -194,6 +207,12 @@ export default function LibraryPage() {
   ];
 
   const tabForItem = (i: LibItem): string => {
+    // 1. Authoritative known manga / webtoons (settled facts overrule corrupted local storage)
+    const km = detectKnownManga(i.title);
+    if (km) return "manga";
+    const kw = detectKnownWebtoon(i.title);
+    if (kw) return "manhwa";
+
     const t = (i.type || "").toLowerCase();
     if (t === "manga") return "manga";
     if (t === "manhwa" || t === "manhua" || t === "webtoon") return "manhwa";

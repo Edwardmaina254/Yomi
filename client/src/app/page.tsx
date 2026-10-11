@@ -24,6 +24,8 @@ import {
   MangaResult,
   rememberTypes,
   guessPrimaryProvider,
+  detectKnownManga,
+  detectKnownWebtoon,
 } from "@/lib/types";
 import { findContinue, findContinueByTitle, chapterLabel } from "@/lib/continue";
 import { Search, Moon, Sun, ChevronRight, ChevronLeft, Bookmark } from "lucide-react";
@@ -168,7 +170,8 @@ function ContinueCard({ item, onRemove }: { item: ContinueItem; onRemove: () => 
   const pp = guessPrimaryProvider(mangaId, item.provider);
   if (pp) params.set("pp", pp);
   if (item.coverUrl) params.set("cover", item.coverUrl);
-  if (item.type) params.set("mt", item.type);
+  const resolvedType = detectKnownManga(title) || detectKnownWebtoon(title) || item.type;
+  if (resolvedType) params.set("mt", resolvedType);
   if (item.page && item.page > 1) params.set("p", String(item.page));
 
   return (

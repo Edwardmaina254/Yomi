@@ -1,31 +1,4 @@
-import puppeteer from 'puppeteer-extra';
-import StealthPlugin from 'puppeteer-extra-plugin-stealth';
-import path from 'path';
-import fs from 'fs';
-
-puppeteer.use(StealthPlugin());
-
-function getLocalChromeExecutable(): string | undefined {
-    const localDir = path.resolve(process.cwd(), '.cache', 'puppeteer', 'chrome');
-    if (!fs.existsSync(localDir)) return undefined;
-    
-    const findChrome = (dir: string): string | undefined => {
-        const files = fs.readdirSync(dir);
-        for (const file of files) {
-            const fullPath = path.join(dir, file);
-            const stat = fs.statSync(fullPath);
-            if (stat.isDirectory()) {
-                const found = findChrome(fullPath);
-                if (found) return found;
-            } else if (file === 'chrome' || file === 'chrome.exe' || file === 'chromium' || file === 'chromium.exe') {
-                return fullPath;
-            }
-        }
-        return undefined;
-    };
-
-    return findChrome(localDir);
-}
+import { getSharedBrowser } from './browser';
 
 export interface MangaFireSearchResult {
     id: string;
@@ -74,29 +47,9 @@ export class MangaFireService {
 
         this.initPromise = (async () => {
             try {
-                const localExe = getLocalChromeExecutable();
-                if (localExe) {
-                    console.log('[MangaFire] Using local Chrome executable:', localExe);
-                }
-
-                this.browser = await puppeteer.launch({
-                    headless: 'new' as any,
-                    executablePath: localExe,
-                    args: [
-                        '--no-sandbox',
-                        '--disable-setuid-sandbox',
-                        '--disable-dev-shm-usage'
-                    ]
-                });
-
-                this.browser.on('disconnected', () => {
-                    console.log('[MangaFire] Browser disconnected, clearing instance.');
-                    this.browser = null;
-                    this.page = null;
-                    this.initPromise = null;
-                });
-
+                this.browser = await getSharedBrowser();
                 this.page = await this.browser.newPage();
+                await this.page.setBypassCSP(true);
                 await this.page.goto('https://mangafire.to', {
                     waitUntil: 'networkidle2',
                     timeout: 30000
@@ -104,8 +57,9 @@ export class MangaFireService {
 
                 // Attach fake axios and request signer into browser context
                 await this.page.evaluate(async () => {
+                    const polyLink = document.querySelector('link[href*="polyfill"]')?.getAttribute('href') || 'https://s.mfcdn.nl/build/mf/assets/polyfill-tlfroa-Bq-bHCd3.js';
                     const importModule = new Function('u', 'return import(u)');
-                    const poly = await importModule('https://s.mfcdn.nl/build/mf/assets/polyfill-tlfroa-Bq-bHCd3.js');
+                    const poly = await importModule(polyLink);
                     (window as any)._fakeAxios = {
                         interceptors: {
                             request: {
@@ -141,10 +95,10 @@ export class MangaFireService {
             } catch (err: any) {
                 console.error('[MangaFire] Failed to initialize signer engine:', err.message);
                 this.lastInitError = err.message || String(err);
-                if (this.browser) {
-                    try { await this.browser.close(); } catch {}
+                if (this.page && !this.page.isClosed()) {
+                    try { await this.page.close(); } catch {}
                 }
-                this.browser = null;
+                this.page = null;
                 this.page = null;
                 this.initPromise = null;
                 throw err;

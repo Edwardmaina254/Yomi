@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { supabase } from './config/supabase';
 import { mangaFireService } from './providers/mangafire';
+import { weebCentralService } from './providers/weebcentral';
 
 dotenv.config();
 
@@ -92,15 +93,18 @@ app.get('/api/debug/weebcentral', async (req, res) => {
             }
         });
         const body = await rawRes.text();
+        const stealthResult = await weebCentralService.search('dragon ball');
         res.json({
-            status: rawRes.status,
-            statusText: rawRes.statusText,
-            headers: Object.fromEntries(rawRes.headers.entries()),
-            bodyLength: body.length,
-            bodyPreview: body.substring(0, 500)
+            directStatus: rawRes.status,
+            directStatusText: rawRes.statusText,
+            directBodyPreview: body.substring(0, 300),
+            stealthSuccess: stealthResult.results.length > 0,
+            stealthCount: stealthResult.results.length,
+            stealthSample: stealthResult.results[0] || null,
+            lastInitError: weebCentralService.lastInitError
         });
     } catch (e: any) {
-        res.json({ error: e.message, stack: e.stack });
+        res.json({ error: e.message, lastInitError: weebCentralService.lastInitError, stack: e.stack });
     }
 });
 
@@ -252,21 +256,7 @@ app.post('/api/scrape', async (req, res) => {
                 throw new Error('MangaDex returned error: ' + JSON.stringify(mdexJson.errors));
             }
         } else if (providerName === 'weebcentral') {
-            const wcRes = await fetch(`https://weebcentral.com/chapters/${decodedUrl}/images?is_prev=False&current_page=1&reading_style=long_strip`, {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                    'Referer': `https://weebcentral.com/chapters/${decodedUrl}`
-                }
-            });
-            const html = await wcRes.text();
-            const regex = /<img[^>]+src="([^">]+)"/g;
-            let match;
-            while ((match = regex.exec(html)) !== null) {
-                const url = match[1];
-                if (!url.includes('brand.png') && !url.includes('404.png')) {
-                    images.push(url);
-                }
-            }
+            images = await weebCentralService.fetchChapterPages(decodedUrl);
         } else if (providerName === 'mangafire') {
             images = await mangaFireService.fetchChapterPages(decodedUrl);
         } else {
@@ -361,82 +351,13 @@ const isNSFW = (m: any) => {
 };
 
 // Helper to extract string from multi-language title/description objects
-// Helper for blazing fast native WeebCentral search to prevent 6s cold starts
+// WeebCentral search and chapters backed by resilient stealth service
 async function nativeSearchWeebCentral(q: string) {
-    const cleanQ = q.replace(/[^a-zA-Z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
-    const searchUrl = (term: string) => `https://weebcentral.com/search/data?text=${encodeURIComponent(term)}&limit=32&offset=0&display_mode=Full+Display`;
-    
-    const fetchTerm = async (term: string) => {
-        try {
-            const res = await fetch(searchUrl(term), {
-                headers: {
-                    'HX-Request': 'true',
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                    'Referer': 'https://weebcentral.com/search'
-                }
-            });
-            if (!res.ok) return [];
-            const t = await res.text();
-            const cheerio = require('cheerio');
-            const $ = cheerio.load(t);
-            return $('article.bg-base-300').map((i: any, el: any) => {
-                const link = $(el).find('a[href*="/series/"]').first();
-                const href = link.attr('href');
-                if (!href) return null;
-                const id = href.split('/series/')[1];
-                const title = $(el).find('section.hidden.lg\\:block .tooltip a').text().trim() 
-                           || $(el).find('section a .text-ellipsis').text().trim()
-                           || $(el).find('.text-ellipsis').text().trim()
-                           || $(el).find('a[href*="/series/"]').last().text().trim();
-                const image = $(el).find('picture source').first().attr('srcset') || $(el).find('picture img').attr('src');
-                const typeTip = $(el).find('[data-tip]').attr('data-tip')?.toLowerCase();
-                const type = typeTip === 'manhwa' ? 'manhwa' : (typeTip === 'manhua' ? 'manhua' : 'manga');
-                return { id, title, image, type };
-            }).get().filter(Boolean);
-        } catch (e: any) {
-            console.error('WeebCentral search error:', e.message);
-            return [];
-        }
-    };
-
-    let results = await fetchTerm(cleanQ);
-    if (results.length === 0 && cleanQ !== q) {
-        results = await fetchTerm(q);
-    }
-    if (results.length === 0) {
-        const words = cleanQ.split(' ').filter(w => w.length > 2);
-        if (words.length > 1) {
-            const shortQ = words.slice(0, 2).join(' ');
-            results = await fetchTerm(shortQ);
-        }
-    }
-    return { results };
+    return await weebCentralService.search(q);
 }
 
 async function nativeFetchWeebCentralChapters(mangaId: string) {
-    const realId = mangaId.split('/')[0];
-    const res = await fetch(`https://weebcentral.com/series/${realId}/full-chapter-list`, {
-        headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Referer': `https://weebcentral.com/series/${realId}`
-        }
-    });
-    if (!res.ok) return { chapters: [] };
-    const html = await res.text();
-    const chapters = [];
-    const regex = /<a href="\/chapters\/([^"]+)"[^>]*>[\s\S]*?<span class="">(.*?)<\/span>/g;
-    let match;
-    while ((match = regex.exec(html)) !== null) {
-        chapters.push({
-            id: match[1],
-            chapterNumber: match[2].replace('Chapter ', '').trim(),
-            title: match[2].trim(),
-            pages: 1,
-            createdAt: new Date().toISOString(),
-            provider: 'weebcentral'
-        });
-    }
-    return { chapters };
+    return await weebCentralService.fetchMangaInfo(mangaId);
 }
 
 const extractString = (val: any): string => {

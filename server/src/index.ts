@@ -143,7 +143,7 @@ app.get('/api/proxy', async (req, res) => {
         } else if (targetUrl.includes('mfcdn') || targetUrl.includes('mangafire')) {
             referer = 'https://mangafire.to/';
         } else if (targetUrl.includes('comicknew.pictures') || targetUrl.includes('comick')) {
-            referer = 'https://comick.io/';
+            referer = 'https://comick.art/';
         } else if (targetUrl.includes('mangahere') || targetUrl.includes('zjcdn') || targetUrl.includes('fmcdn')) {
             referer = 'https://www.mangahere.cc/';
         } else if (targetUrl.includes('webtoon') || targetUrl.includes('pstatic.net')) {

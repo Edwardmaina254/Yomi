@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch --dns-result-order=ipv4first src/index.ts",
-    "build": "tsc",
+    "build": "npx puppeteer browsers install chrome && tsc",
     "start": "node --dns-result-order=ipv4first dist/index.js"
   },
   "keywords": [],

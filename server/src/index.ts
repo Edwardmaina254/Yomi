@@ -84,10 +84,23 @@ app.get('/api/debug/mangafire', async (req, res) => {
 
 app.get('/api/debug/weebcentral', async (req, res) => {
     try {
-        const result = await nativeSearchWeebCentral('dragon ball');
-        res.json({ count: result.results.length, items: result.results.slice(0, 3) });
+        const rawRes = await fetch('https://weebcentral.com/search/data?text=dragon+ball&limit=32&offset=0&display_mode=Full+Display', {
+            headers: {
+                'HX-Request': 'true',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Referer': 'https://weebcentral.com/search'
+            }
+        });
+        const body = await rawRes.text();
+        res.json({
+            status: rawRes.status,
+            statusText: rawRes.statusText,
+            headers: Object.fromEntries(rawRes.headers.entries()),
+            bodyLength: body.length,
+            bodyPreview: body.substring(0, 500)
+        });
     } catch (e: any) {
-        res.json({ error: e.message });
+        res.json({ error: e.message, stack: e.stack });
     }
 });
 

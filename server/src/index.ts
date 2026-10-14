@@ -82,6 +82,15 @@ app.get('/api/debug/mangafire', async (req, res) => {
     }
 });
 
+app.get('/api/debug/weebcentral', async (req, res) => {
+    try {
+        const result = await nativeSearchWeebCentral('dragon ball');
+        res.json({ count: result.results.length, items: result.results.slice(0, 3) });
+    } catch (e: any) {
+        res.json({ error: e.message });
+    }
+});
+
 app.get('/api/proxy', async (req, res) => {
     let targetUrl = req.query.url as string;
     

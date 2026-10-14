@@ -849,6 +849,43 @@ app.get(/^\/api\/manga\/(.+)\/chapters$/, async (req, res) => {
             return intersection.size / Math.max(set1.size, set2.size);
         };
 
+        const findBestTitleMatch = (results: any[], cleanSearch: string) => {
+            if (!results || !results.length) return null;
+
+            // 1. Exact title match
+            const exact = results.find((r: any) => {
+                const t = (r.title || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+                return t === cleanSearch;
+            });
+            if (exact) return exact;
+
+            // 2. Exact match in altTitles
+            const altExact = results.find((r: any) => {
+                if (!r.altTitles || !Array.isArray(r.altTitles)) return false;
+                return r.altTitles.some((at: any) => {
+                    const raw = typeof at === 'string' ? at : (at.en || at.ko || at.ja || Object.values(at)[0] || '');
+                    const t = raw.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+                    return t === cleanSearch;
+                });
+            });
+            if (altExact) return altExact;
+
+            // 3. Permissive substring / similarity match
+            return results.find((r: any) => {
+                const titlesToCheck = [r.title];
+                if (r.altTitles && Array.isArray(r.altTitles)) {
+                    titlesToCheck.push(...r.altTitles.map((at: any) => typeof at === 'string' ? at : at.en || at.ko || at.ja || Object.values(at)[0]));
+                }
+                for (let raw of titlesToCheck) {
+                    if (!raw) continue;
+                    const cleanT = raw.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+                    if (cleanT.includes(cleanSearch) || cleanSearch.includes(cleanT)) return true;
+                    if (getSimilarity(cleanT, cleanSearch) > 0.6) return true;
+                }
+                return false;
+            });
+        };
+
 
         // PARALLEL EXECUTION: Start the primary provider and fallbacks at the EXACT SAME TIME!
         let dataPromise = providerName === 'weebcentral' 
@@ -907,23 +944,7 @@ app.get(/^\/api\/manga\/(.+)\/chapters$/, async (req, res) => {
                     const searchTitleLower = searchTitle.toLowerCase();
                     const cleanSearch = searchTitleLower.replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
 
-                    const best = searchResults.results.find((r: any) => {
-                        const titlesToCheck = [r.title];
-                        if (r.altTitles && Array.isArray(r.altTitles)) {
-                            titlesToCheck.push(...r.altTitles.map((at: any) => typeof at === 'string' ? at : at.en || at.ko || at.ja || Object.values(at)[0]));
-                        }
-                        
-                        for (let raw of titlesToCheck) {
-                            if (!raw) continue;
-                            const t = typeof raw === 'string' ? raw : (raw.en || '');
-                            const cleanT = t.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
-                            if (cleanT.includes(cleanSearch) || cleanSearch.includes(cleanT)) return true;
-                            
-                            const sim = getSimilarity(cleanT, cleanSearch);
-                            if (sim > 0.6) return true;
-                        }
-                        return false;
-                    });
+                    const best = findBestTitleMatch(searchResults.results, cleanSearch);
                     
                     if (!best) return null;
                     const mangaData = p.name === 'weebcentral' ? await nativeFetchWeebCentralChapters(best.id) : await (p.instance() as any).fetchMangaInfo(best.id);
@@ -1010,23 +1031,7 @@ app.get(/^\/api\/manga\/(.+)\/chapters$/, async (req, res) => {
                     const searchTitleLower = searchTitle.toLowerCase();
                     const cleanSearch = searchTitleLower.replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
 
-                    const best = searchResults.results.find((r: any) => {
-                        const titlesToCheck = [r.title];
-                        if (r.altTitles && Array.isArray(r.altTitles)) {
-                            titlesToCheck.push(...r.altTitles.map((at: any) => typeof at === 'string' ? at : at.en || at.ko || at.ja || Object.values(at)[0]));
-                        }
-                        
-                        for (let raw of titlesToCheck) {
-                            if (!raw) continue;
-                            const t = typeof raw === 'string' ? raw : (raw.en || '');
-                            const cleanT = t.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
-                            if (cleanT.includes(cleanSearch) || cleanSearch.includes(cleanT)) return true;
-                            
-                            const sim = getSimilarity(cleanT, cleanSearch);
-                            if (sim > 0.6) return true;
-                        }
-                        return false;
-                    });
+                    const best = findBestTitleMatch(searchResults.results, cleanSearch);
                     
                     if (!best) return null;
                     const mangaData = p.name === 'weebcentral' ? await nativeFetchWeebCentralChapters(best.id) : await p.instance().fetchMangaInfo(best.id);

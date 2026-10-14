@@ -73,6 +73,15 @@ app.use(express.json());
 // Proxy endpoint to bypass CORS and hotlinking restrictions
 app.get('/health', (req, res) => res.status(200).send('OK'));
 
+app.get('/api/debug/mangafire', async (req, res) => {
+    try {
+        const result = await mangaFireService.search('solo leveling');
+        res.json({ success: true, count: result.results.length, sample: result.results[0], lastInitError: mangaFireService.lastInitError });
+    } catch (e: any) {
+        res.json({ success: false, error: e.message, lastInitError: mangaFireService.lastInitError, stack: e.stack });
+    }
+});
+
 app.get('/api/proxy', async (req, res) => {
     let targetUrl = req.query.url as string;
     

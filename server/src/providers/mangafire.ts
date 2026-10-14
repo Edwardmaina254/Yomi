@@ -37,6 +37,7 @@ export class MangaFireService {
     private page: any = null;
     private initPromise: Promise<void> | null = null;
     private queue: Promise<any> = Promise.resolve();
+    public lastInitError: string | null = null;
 
     private async ensureInitialized(): Promise<void> {
         if (this.browser && this.page && !this.page.isClosed()) {
@@ -110,6 +111,7 @@ export class MangaFireService {
                 console.log('[MangaFire] Signer engine ready!');
             } catch (err: any) {
                 console.error('[MangaFire] Failed to initialize signer engine:', err.message);
+                this.lastInitError = err.message || String(err);
                 if (this.browser) {
                     try { await this.browser.close(); } catch {}
                 }

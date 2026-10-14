@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { supabase } from './config/supabase';
+import { mangaFireService } from './providers/mangafire';
 
 dotenv.config();
 
@@ -95,7 +96,7 @@ app.get('/api/proxy', async (req, res) => {
         const host = parsedUrl.hostname.toLowerCase();
         const allowedKeywords = [
             'mangadex', 'mangapill', 'readdetectiveconan', 'weebcentral', 'compsci88', 'lastation', 'lowee', 'planeptune', 'leanbox',
-            'comick', 'mangahere', 'zjcdn', 'fmcdn', 'webtoon', 'pstatic', 'myanimelist'
+            'comick', 'mangahere', 'zjcdn', 'fmcdn', 'webtoon', 'pstatic', 'myanimelist', 'mfcdn', 'mangafire'
         ];
         if (!allowedKeywords.some(keyword => host.includes(keyword))) {
             return res.status(403).send('Forbidden: Domain not in proxy allowlist');
@@ -108,6 +109,8 @@ app.get('/api/proxy', async (req, res) => {
             referer = 'https://mangapill.com/';
         } else if (targetUrl.includes('weebcentral.com') || targetUrl.includes('compsci88') || targetUrl.includes('lastation') || targetUrl.includes('lowee') || targetUrl.includes('planeptune') || targetUrl.includes('leanbox')) {
             referer = 'https://weebcentral.com/';
+        } else if (targetUrl.includes('mfcdn') || targetUrl.includes('mangafire')) {
+            referer = 'https://mangafire.to/';
         } else if (targetUrl.includes('comicknew.pictures') || targetUrl.includes('comick')) {
             referer = 'https://comick.io/';
         } else if (targetUrl.includes('mangahere') || targetUrl.includes('zjcdn') || targetUrl.includes('fmcdn')) {
@@ -152,6 +155,7 @@ const getProvider = (name?: string) => {
         case 'mangadex': return new MANGA.MangaDex();
         case 'mangapill': return new MANGA.MangaPill();
         case 'mangahere': return new MANGA.MangaHere();
+        case 'mangafire': return mangaFireService as any;
         case 'comick': return new MANGA.ComicK();
         case 'weebcentral': return new MANGA.WeebCentral();
         default: return new MANGA.WeebCentral();
@@ -232,10 +236,12 @@ app.post('/api/scrape', async (req, res) => {
                     images.push(url);
                 }
             }
+        } else if (providerName === 'mangafire') {
+            images = await mangaFireService.fetchChapterPages(decodedUrl);
         } else {
             const provider = getProvider(providerName);
             const pages = await provider.fetchChapterPages(decodedUrl);
-            images = Array.from(new Set(pages.map(page => page.img)));
+            images = Array.from(new Set(pages.map((page: any) => page.img)));
         }
 
         if (images.some(img => img.includes('404.png') || img.includes('brand.png'))) {
@@ -581,6 +587,7 @@ app.get('/api/search', async (req, res) => {
     // The backend gracefully falls back to WeebCentral/MangaHere internally when chapters are requested!
     const providers = [
         { name: 'weebcentral', instance: new MANGA.WeebCentral() },
+        { name: 'mangafire', instance: mangaFireService },
         { name: 'comick', instance: createComicK() },
         { name: 'mangadex', instance: new MANGA.MangaDex() },
         { name: 'mangapill', instance: new MANGA.MangaPill() }
@@ -662,7 +669,7 @@ app.get('/api/search', async (req, res) => {
         });
 
         let finalResults = groups.map(group => {
-            const order: Record<string, number> = { 'weebcentral': 5, 'comick': 4, 'mangadex': 3, 'mangapill': 2, 'mangahere': 1 };
+            const order: Record<string, number> = { 'weebcentral': 5, 'mangafire': 4, 'comick': 3, 'mangadex': 2, 'mangapill': 1 };
             group.sort((a, b) => (order[b.provider] || 0) - (order[a.provider] || 0));
             
             const best = group[0];
@@ -802,6 +809,7 @@ const createComicK = () => {
 
 const FALLBACK_PROVIDERS = [
     { name: 'weebcentral', instance: () => new MANGA.WeebCentral() },
+    { name: 'mangafire', instance: () => mangaFireService },
     { name: 'comick', instance: createComicK },
     { name: 'mangapill', instance: () => new MANGA.MangaPill() },
     { name: 'mangadex', instance: () => new MANGA.MangaDex() }
@@ -966,7 +974,7 @@ app.get(/^\/api\/manga\/(.+)\/chapters$/, async (req, res) => {
                     });
                     
                     if (!best) return null;
-                    const mangaData = p.name === 'weebcentral' ? await nativeFetchWeebCentralChapters(best.id) : await p.instance().search(providerSearchQuery).then(() => p.instance().fetchMangaInfo(best.id));
+                    const mangaData = p.name === 'weebcentral' ? await nativeFetchWeebCentralChapters(best.id) : await (p.instance() as any).fetchMangaInfo(best.id);
                     return { provider: p.name, data: mangaData };
                 } catch (e: any) {
                     return null;
@@ -1103,6 +1111,7 @@ app.get(/^\/api\/manga\/(.+)\/chapters$/, async (req, res) => {
             if (r.count === 0) return 0; // Never reward a provider that has 0 chapters
             let score = r.count * 10;
             if (r.provider === 'weebcentral') score += 1000000; // King of chapters, completeness & reliability
+            if (r.provider === 'mangafire') score += 800000; // Massive high-res catalog, complete chapters
             if (r.provider === 'comick') score += 50000; // Complete chapter coverage across all pages!
             if (r.provider === 'mangapill') score += 5000;
             if (r.provider === 'mangadex') score += 100;

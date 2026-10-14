@@ -574,6 +574,8 @@ export function providerLabel(p?: string): string {
       return "MangaDex";
     case "weebcentral":
       return "Weeb Central";
+    case "mangafire":
+      return "MangaFire";
     default:
       return "Yomi";
   }

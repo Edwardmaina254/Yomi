@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { unmarkDeleted } from "@/lib/continue";
 import { API_URL, getProxyUrl, getMangaType, getMangaTitle, extractString, looksLikeId, modeForType, detectTypeFromTitle, detectTypeFromGeometry, detectKnownWebtoon, rememberType, rememberTitle, findChapterById, getModeOverride, rememberModeOverride, clearModeOverride, type Chapter } from "@/lib/types";
 import { navReplace } from "@/lib/navHistory";
 import { useNav } from "@/contexts/NavContext";
@@ -138,7 +139,7 @@ function ReaderContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { goBack, canGoBack, label: backLabel } = useNav();
-  const { user, syncData } = useAuth();
+  const { user, pushData } = useAuth();
   const syncTimerRef = useRef<NodeJS.Timeout | null>(null);
   const provider = searchParams.get("provider") || "weebcentral";
   
@@ -598,6 +599,12 @@ function ReaderContent() {
   const savePosition = useCallback(
     (p: number, total: number) => {
       try {
+        unmarkDeleted({
+          id: chapterId,
+          mangaId: sourceMangaId,
+          title,
+        });
+
         const progress = Math.round((p / total) * 100);
         const cont = JSON.parse(localStorage.getItem("yomi.continue") || "[]");
         
@@ -664,12 +671,12 @@ function ReaderContent() {
         if (user) {
           if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
           syncTimerRef.current = setTimeout(() => {
-            syncData();
+            pushData();
           }, 3000); // 3 second debounce to avoid spamming the backend while scrolling
         }
       } catch {}
     },
-    [chapterId, title, provider, sourceMangaId, searchParams, typeParam, chapters, user, syncData]
+    [chapterId, title, provider, sourceMangaId, searchParams, typeParam, chapters, user, pushData]
   );
 
   /* Heal continue entries already stored with an id-shaped chapter label

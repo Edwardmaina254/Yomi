@@ -23,6 +23,7 @@ import {
 import { Moon, Sun, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { AccountBar, AccountButton } from "@/components/AccountBar";
+import { removeFromShelf, isDeletedFromShelf } from "@/lib/continue";
 
 interface LibItem {
   id: string;
@@ -65,7 +66,9 @@ function loadLib(): LibItem[] {
   try {
     const lib = JSON.parse(localStorage.getItem("yomi.lib") || "[]");
     if (Array.isArray(lib)) {
-      lib.forEach((x) => items.push(pushWithTitle(x, x.id)));
+      lib.forEach((x) => {
+        if (!isDeletedFromShelf(x)) items.push(pushWithTitle(x, x.id));
+      });
     }
   } catch {}
   try {
@@ -73,7 +76,7 @@ function loadLib(): LibItem[] {
     if (Array.isArray(cont)) {
       cont.forEach((x) => {
         const isCorruptHash = !x.mangaId && /^[0-9A-Z]{26}$/.test(x.chapter);
-        if (!items.some((i) => i.id === x.id) && !isCorruptHash) {
+        if (!items.some((i) => i.id === x.id) && !isCorruptHash && !isDeletedFromShelf(x)) {
           items.push(pushWithTitle(x, x.mangaId || x.id));
         }
       });
@@ -142,7 +145,9 @@ async function healStoredTitles() {
             } catch {}
           }
         }
-        if (dirty) localStorage.setItem(store, JSON.stringify(arr));
+        const filteredArr = arr.filter((x: any) => !isDeletedFromShelf(x));
+        if (filteredArr.length !== arr.length) dirty = true;
+        if (dirty) localStorage.setItem(store, JSON.stringify(filteredArr));
       } catch {}
     }
   } catch {}
@@ -236,14 +241,27 @@ export default function LibraryPage() {
     return list;
   }, [items, tab, sort]);
 
+  useEffect(() => {
+    const onShelfChange = () => {
+      setItems(loadLib());
+    };
+    window.addEventListener("storage", onShelfChange);
+    window.addEventListener("yomi:shelf-change", onShelfChange);
+    return () => {
+      window.removeEventListener("storage", onShelfChange);
+      window.removeEventListener("yomi:shelf-change", onShelfChange);
+    };
+  }, []);
+
   const removeItem = (id: string) => {
-    const next = items.filter((i) => i.id !== id);
-    setItems(next);
-    try {
-      const lib = JSON.parse(localStorage.getItem("yomi.lib") || "[]").filter((x: any) => x.id !== id);
-      localStorage.setItem("yomi.lib", JSON.stringify(lib));
-      if (user) pushData();
-    } catch {}
+    const target = items.find((i) => i.id === id);
+    removeFromShelf({
+      id,
+      mangaId: target?.mangaId,
+      title: target?.title,
+    });
+    setItems(loadLib());
+    if (user) pushData();
   };
 
   return (

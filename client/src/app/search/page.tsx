@@ -69,11 +69,13 @@ function SearchPageContent() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === "yomi.continue") setContEntries(loadContinueEntries());
-    };
+    const onStorage = () => setContEntries(loadContinueEntries());
     window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    window.addEventListener("yomi:shelf-change", onStorage);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("yomi:shelf-change", onStorage);
+    };
   }, []);
 
   useEffect(() => {

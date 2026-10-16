@@ -27,6 +27,8 @@ import {
   findContinue,
   findContinueByTitle,
   chapterLabel,
+  removeFromShelf,
+  unmarkDeleted,
 } from "@/lib/continue";
 import gsap from "gsap";
 import { useAuth } from "@/contexts/AuthContext";
@@ -69,7 +71,7 @@ function MangaDetailsContent() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, syncData } = useAuth();
+  const { user, pushData } = useAuth();
   const provider = searchParams.get("provider") || "weebcentral";
   const titleParam = searchParams.get("t");
   const mangaId = params?.mangaId as string;
@@ -187,9 +189,19 @@ function MangaDetailsContent() {
     const idx = lib.findIndex((x) => x.id === mangaId);
 
     if (idx > -1) {
-      lib.splice(idx, 1);
+      removeFromShelf({
+        id: mangaId,
+        mangaId,
+        title: extractString(manga?.title),
+      });
       setInLibrary(false);
+      if (user) pushData();
     } else {
+      unmarkDeleted({
+        id: mangaId,
+        mangaId,
+        title: extractString(manga?.title),
+      });
       lib.unshift({
         id: mangaId,
         title: extractString(manga?.title),
@@ -198,10 +210,10 @@ function MangaDetailsContent() {
         type: manga?.type || "",
         updatedAt: Date.now(),
       });
+      localStorage.setItem("yomi.lib", JSON.stringify(lib));
       setInLibrary(true);
+      if (user) pushData();
     }
-    localStorage.setItem("yomi.lib", JSON.stringify(lib));
-    if (user) syncData();
   };
 
   /* Chapter ids are provider-scoped, so an entry saved from another source

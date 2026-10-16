@@ -27,7 +27,7 @@ import {
   detectKnownManga,
   detectKnownWebtoon,
 } from "@/lib/types";
-import { findContinue, findContinueByTitle, chapterLabel } from "@/lib/continue";
+import { findContinue, findContinueByTitle, chapterLabel, removeFromShelf, isDeletedFromShelf } from "@/lib/continue";
 import { Search, Moon, Sun, ChevronRight, ChevronLeft, Bookmark } from "lucide-react";
 import { AccountButton } from "@/components/AccountBar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -89,6 +89,7 @@ function loadContinueReading(): ContinueItem[] {
 
   for (const entry of parsed) {
     if (!entry || typeof entry !== "object") { dirty = true; continue; }
+    if (isDeletedFromShelf(entry)) { dirty = true; continue; }
     const id = String(entry.id ?? "").trim();
     if (!id) { dirty = true; continue; } // unusable — no way back to a chapter
 
@@ -688,11 +689,13 @@ export default function HomePage() {
   /* Keep the shelf in sync with the library tab (and other tabs) without a
      reload. */
   useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === CONT_KEY) setContinueReading(loadContinueReading());
-    };
+    const onStorage = () => setContinueReading(loadContinueReading());
     window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    window.addEventListener("yomi:shelf-change", onStorage);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("yomi:shelf-change", onStorage);
+    };
   }, []);
 
   /* One-shot repair pass for entries that were saved before the chapter list
@@ -997,11 +1000,12 @@ export default function HomePage() {
                     key={item.mangaId || item.id}
                     item={item}
                     onRemove={() => {
-                      const updated = continueReading.filter(
-                        (x) => (x.mangaId || x.id) !== (item.mangaId || item.id)
-                      );
-                      setContinueReading(updated);
-                      saveContinueReading(updated);
+                      removeFromShelf({
+                        id: item.id,
+                        mangaId: item.mangaId,
+                        title: item.title,
+                      });
+                      setContinueReading(loadContinueReading());
                       if (user) pushData();
                     }}
                   />

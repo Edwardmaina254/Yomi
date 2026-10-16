@@ -33,7 +33,8 @@ export function loadContinueEntries(): ContinueEntry[] {
         !!e &&
         typeof e === "object" &&
         typeof (e as ContinueEntry).id === "string" &&
-        (e as ContinueEntry).id.trim().length > 0
+        (e as ContinueEntry).id.trim().length > 0 &&
+        !isDeletedFromShelf(e as ContinueEntry)
     );
   } catch {
     return [];
@@ -106,4 +107,144 @@ export function continueReaderHref(
   const page = Math.round(Number(opts.page ?? entry.page) || 0);
   if (page > 1) params.set("p", String(page));
   return `/read/${encodeURIComponent(opts.chapterId || entry.id)}?${params.toString()}`;
+}
+
+export const LIB_KEY = "yomi.lib";
+export const DELETED_KEY = "yomi.deleted";
+
+export interface ShelfItem {
+  id?: string;
+  mangaId?: string;
+  title?: string;
+  [key: string]: any;
+}
+
+export interface DeletedEntry {
+  id?: string;
+  mangaId?: string;
+  title?: string;
+  deletedAt: number;
+}
+
+/**
+ * Checks whether an item matches a removal target or deleted tombstone by
+ * chapter ID, manga ID, or normalized title.
+ */
+export function matchesTarget(
+  item: ShelfItem,
+  target: ShelfItem
+): boolean {
+  if (!item || !target) return false;
+
+  const itemId = item.id ? String(item.id).trim() : "";
+  const itemMangaId = item.mangaId ? String(item.mangaId).trim() : "";
+  const targetId = target.id ? String(target.id).trim() : "";
+  const targetMangaId = target.mangaId ? String(target.mangaId).trim() : "";
+
+  // 1. Direct or cross ID match
+  if (targetId && (itemId === targetId || itemMangaId === targetId)) return true;
+  if (targetMangaId && (itemMangaId === targetMangaId || itemId === targetMangaId)) return true;
+  if (itemId && targetMangaId && itemId === targetMangaId) return true;
+  if (itemMangaId && targetId && itemMangaId === targetId) return true;
+
+  // 2. Exact normalized title match (minimum 3 characters to avoid empty/generic strings)
+  const itemTitle = normTitle(item.title);
+  const targetTitle = normTitle(target.title);
+  if (itemTitle.length >= 3 && targetTitle.length >= 3 && itemTitle === targetTitle) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Loads all active deleted tombstones from localStorage.
+ */
+export function loadDeletedEntries(): DeletedEntry[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(DELETED_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as DeletedEntry[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Checks if an item has been explicitly deleted from the user's shelf.
+ */
+export function isDeletedFromShelf(item: ShelfItem): boolean {
+  if (typeof window === "undefined" || !item) return false;
+  const deleted = loadDeletedEntries();
+  return deleted.some((d) => matchesTarget(item, d));
+}
+
+/**
+ * Permanently removes a manga/manhwa from both Continue Reading (`yomi.continue`)
+ * and Library (`yomi.lib`), and records a persistent tombstone in `yomi.deleted`
+ * so cloud merges and background syncs never resurrect it.
+ */
+export function removeFromShelf(target: ShelfItem) {
+  if (typeof window === "undefined" || !target) return;
+
+  // 1. Record tombstone in yomi.deleted
+  try {
+    const deleted = loadDeletedEntries();
+    const norm = target.title ? normTitle(target.title) : undefined;
+    const exists = deleted.some((d) => matchesTarget(d, target));
+    if (!exists) {
+      deleted.unshift({
+        id: target.id ? String(target.id).trim() : undefined,
+        mangaId: target.mangaId ? String(target.mangaId).trim() : undefined,
+        title: norm && norm.length >= 3 ? norm : undefined,
+        deletedAt: Date.now(),
+      });
+      localStorage.setItem(DELETED_KEY, JSON.stringify(deleted.slice(0, 300)));
+    }
+  } catch { /* noop */ }
+
+  // 2. Remove from yomi.continue
+  try {
+    const contRaw = localStorage.getItem(CONT_KEY);
+    if (contRaw) {
+      const cont: any[] = JSON.parse(contRaw);
+      if (Array.isArray(cont)) {
+        const remaining = cont.filter((item) => !matchesTarget(item, target));
+        localStorage.setItem(CONT_KEY, JSON.stringify(remaining));
+      }
+    }
+  } catch { /* noop */ }
+
+  // 3. Remove from yomi.lib
+  try {
+    const libRaw = localStorage.getItem(LIB_KEY);
+    if (libRaw) {
+      const lib: any[] = JSON.parse(libRaw);
+      if (Array.isArray(lib)) {
+        const remaining = lib.filter((item) => !matchesTarget(item, target));
+        localStorage.setItem(LIB_KEY, JSON.stringify(remaining));
+      }
+    }
+  } catch { /* noop */ }
+
+  // 4. Notify open pages and tabs to re-render immediately
+  try {
+    window.dispatchEvent(new Event("storage"));
+    window.dispatchEvent(new CustomEvent("yomi:shelf-change", { detail: target }));
+  } catch { /* noop */ }
+}
+
+/**
+ * Clears an item's tombstone when the user explicitly chooses to read or bookmark it again.
+ */
+export function unmarkDeleted(target: ShelfItem) {
+  if (typeof window === "undefined" || !target) return;
+  try {
+    const deleted = loadDeletedEntries();
+    if (!deleted.length) return;
+    const filtered = deleted.filter((d) => !matchesTarget(d, target));
+    localStorage.setItem(DELETED_KEY, JSON.stringify(filtered));
+  } catch { /* noop */ }
 }

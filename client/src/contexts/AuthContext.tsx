@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, useCallback, useRef, Re
 import { useRouter } from "next/navigation";
 import { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import { isDeletedFromShelf, DELETED_KEY } from "@/lib/continue";
 
 
 interface AuthContextType {
@@ -131,18 +132,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const cloudLib: any[] = cloudData?.library_data || [];
       const cloudCont: any[] = cloudData?.continue_data || [];
 
-      // 3. Merge Library (dedupe by ID)
+      // 3. Merge Library (dedupe by ID, discarding any deleted tombstones)
       const mergedLibMap = new Map<string, any>();
-      cloudLib.forEach(item => mergedLibMap.set(item.id, item));
-      localLib.forEach(item => mergedLibMap.set(item.id, item)); // local overwrites cloud if conflict (assuming recent)
+      cloudLib.forEach(item => {
+        if (!isDeletedFromShelf(item)) mergedLibMap.set(item.id, item);
+      });
+      localLib.forEach(item => {
+        if (!isDeletedFromShelf(item)) mergedLibMap.set(item.id, item);
+      });
       const mergedLib = Array.from(mergedLibMap.values());
 
-      // 4. Merge Continue Reading (dedupe by mangaId or id)
+      // 4. Merge Continue Reading (dedupe by mangaId or id, discarding any deleted tombstones)
       const mergedContMap = new Map<string, any>();
-      cloudCont.forEach(item => mergedContMap.set(item.mangaId || item.id, item));
+      cloudCont.forEach(item => {
+        if (!isDeletedFromShelf(item)) mergedContMap.set(item.mangaId || item.id, item);
+      });
       localCont.forEach(item => {
-        const key = item.mangaId || item.id;
-        mergedContMap.set(key, item);
+        if (!isDeletedFromShelf(item)) {
+          const key = item.mangaId || item.id;
+          mergedContMap.set(key, item);
+        }
       });
       const mergedCont = Array.from(mergedContMap.values());
 
@@ -278,8 +287,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const localLibRaw = localStorage.getItem("yomi.lib");
       const localContRaw = localStorage.getItem("yomi.continue");
       
-      const localLib = localLibRaw ? JSON.parse(localLibRaw) : [];
-      const localCont = localContRaw ? JSON.parse(localContRaw) : [];
+      const localLib = (localLibRaw ? JSON.parse(localLibRaw) : []).filter((item: any) => !isDeletedFromShelf(item));
+      const localCont = (localContRaw ? JSON.parse(localContRaw) : []).filter((item: any) => !isDeletedFromShelf(item));
 
       const { error: pushError } = await supabase.rpc('sync_user_data', {
         p_user_id: activeUser.id,
@@ -299,6 +308,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // 1. Wipe local storage
     localStorage.removeItem("yomi.lib");
     localStorage.removeItem("yomi.continue");
+    localStorage.removeItem(DELETED_KEY);
     
     // 2. Wipe cloud data if logged in
     if (user) {

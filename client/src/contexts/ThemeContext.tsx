@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from "react";
 
 type Theme = "night" | "paper";
 
@@ -22,7 +22,11 @@ export function useTheme() {
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>("night");
-  const [mounted, setMounted] = useState(false);
+  const themeRef = useRef<Theme>("night");
+
+  useEffect(() => {
+    themeRef.current = theme;
+  }, [theme]);
 
   useEffect(() => {
     if ('serviceWorker' in navigator) {
@@ -30,32 +34,53 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
     const stored = localStorage.getItem("yomi.theme") as Theme | null;
     if (stored === "paper" || stored === "night") {
+      themeRef.current = stored;
       setThemeState(stored);
+      document.documentElement.setAttribute("data-theme", stored);
+      const meta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement | null;
+      if (meta) meta.content = stored === "night" ? "#0d1017" : "#f5f1e8";
     }
-    setMounted(true);
   }, []);
 
-  useEffect(() => {
-    if (!mounted) return;
-    document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem("yomi.theme", theme);
-    const meta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement | null;
-    if (meta) meta.content = theme === "night" ? "#0d1017" : "#f5f1e8";
-  }, [theme, mounted]);
-
-  const toggleTheme = () => {
-    // Force a single atomic paint: disable every element transition for one
-    // frame so the whole UI swaps simultaneously (no per-component stagger).
+  const applyTheme = useCallback((nextThemeOrUpdater: Theme | ((prev: Theme) => Theme)) => {
     const root = document.documentElement;
+    const current = (root.getAttribute("data-theme") as Theme) || themeRef.current || "night";
+    const next = typeof nextThemeOrUpdater === "function" ? nextThemeOrUpdater(current) : nextThemeOrUpdater;
+
+    // 1. Instantly freeze transitions & animations across the whole DOM
     root.classList.add("yomi-theme-swap");
+
+    // 2. Synchronously set the theme attribute
+    root.setAttribute("data-theme", next);
+    themeRef.current = next;
+
+    // 3. Force synchronous style recalculation so that all CSS variables & rules
+    // switch at the exact same moment with zero transition lag
+    void root.offsetHeight;
+
+    // 4. Update React state, theme-color meta, and persistence
+    setThemeState(next);
+    try {
+      localStorage.setItem("yomi.theme", next);
+    } catch { /* noop */ }
+    const meta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement | null;
+    if (meta) meta.content = next === "night" ? "#0d1017" : "#f5f1e8";
+
+    // 5. Restore transitions on the following frame for user interactions/hover
     requestAnimationFrame(() => {
-      setThemeState((t) => (t === "night" ? "paper" : "night"));
-      requestAnimationFrame(() => root.classList.remove("yomi-theme-swap"));
+      requestAnimationFrame(() => {
+        root.classList.remove("yomi-theme-swap");
+      });
     });
-  };
-  const setTheme = (t: Theme) => {
-    setThemeState(t);
-  };
+  }, []);
+
+  const toggleTheme = useCallback(() => {
+    applyTheme((prev) => (prev === "night" ? "paper" : "night"));
+  }, [applyTheme]);
+
+  const setTheme = useCallback((t: Theme) => {
+    applyTheme(t);
+  }, [applyTheme]);
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>

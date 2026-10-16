@@ -103,8 +103,13 @@ html[data-theme="paper"] {
 }
 
 /* ── Atomic theme swap ── */
-html.yomi-theme-swap, html.yomi-theme-swap * {
+html.yomi-theme-swap,
+html.yomi-theme-swap *,
+html.yomi-theme-swap *::before,
+html.yomi-theme-swap *::after {
   transition: none !important;
+  animation-duration: 0.001ms !important;
+  animation-delay: 0s !important;
 }
 
 /* ── Base reset ── */

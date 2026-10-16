@@ -65,7 +65,7 @@ function SearchPageContent() {
      refreshed from the cross-tab listener below. */
   const [contEntries, setContEntries] = useState<ContinueEntry[]>(() => loadContinueEntries());
 
-  const debouncedQuery = useDebounce(query, 100);
+  const debouncedQuery = useDebounce(query, 300);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {

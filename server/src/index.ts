@@ -542,11 +542,15 @@ app.get('/api/search', async (req, res) => {
         return res.json({ results: [] });
     }
 
-    // EXTREME SPEED ARCHITECTURE: Only search MangaDex and ComicK for metadata.
-    // The backend gracefully falls back to WeebCentral/MangaHere internally when chapters are requested!
+    const cleanQ = (q as string).toLowerCase().trim();
+    const cacheKey = `search-${cleanQ}`;
+    if (cache.has(cacheKey) && !req.query.nocache) {
+        return res.json(cache.get(cacheKey));
+    }
+
+    // High-speed provider selection: WeebCentral (King) + ComicK & MangaDex (fast HTTP APIs)
     const providers = [
         { name: 'weebcentral', instance: new MANGA.WeebCentral() },
-        { name: 'mangafire', instance: mangaFireService },
         { name: 'comick', instance: createComicK() },
         { name: 'mangadex', instance: new MANGA.MangaDex() },
         { name: 'mangapill', instance: new MANGA.MangaPill() }
@@ -587,7 +591,7 @@ app.get('/api/search', async (req, res) => {
             } else {
                 searchPromise = p.instance.search(q as string).then(data => ({ providerName: p.name, data }));
             }
-            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Provider timeout')), 7000));
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Provider timeout')), 2500));
             return Promise.race([searchPromise, timeoutPromise]);
         });
 
@@ -677,7 +681,9 @@ app.get('/api/search', async (req, res) => {
             return 0;
         });
 
-        res.json({ results: finalResults });
+        const payload = { results: finalResults };
+        cache.set(cacheKey, payload);
+        res.json(payload);
     } catch (error: any) {
         console.error('Search fetch error:', error.message);
         res.status(500).json({ error: 'Failed to search across providers' });
@@ -774,15 +780,20 @@ const FALLBACK_PROVIDERS = [
     { name: 'mangadex', instance: () => new MANGA.MangaDex() }
 ];
 
-const mapChapters = (data: any, resolvedProvider: string) => ({
-    manga: {
-        id: data.id,
-        title: data.title,
-        coverUrl: data.image,
-        synopsis: data.description || '',
-        type: detectType(data),
-        resolvedProvider,
-    },
+const mapChapters = (data: any, resolvedProvider: string) => {
+    let cover = data.image || data.coverUrl;
+    if (!cover && (resolvedProvider === 'weebcentral' || data.provider === 'weebcentral') && data.id) {
+        cover = `https://temp.compsci88.com/cover/normal/${String(data.id).split('/')[0]}.webp`;
+    }
+    return {
+        manga: {
+            id: data.id,
+            title: data.title,
+            coverUrl: cover || null,
+            synopsis: data.description || '',
+            type: detectType(data),
+            resolvedProvider,
+        },
     chapters: (() => {
         const mapped = (data.chapters || []).map((chapter: any) => {
             let chapNum = chapter.chapterNumber;
@@ -828,7 +839,8 @@ const mapChapters = (data: any, resolvedProvider: string) => ({
             return true;
         });
     })()
-});
+    };
+};
 
 // Chapters endpoint — with cross-provider fallback for maximum chapter coverage
 app.get(/^\/api\/manga\/(.+)\/chapters$/, async (req, res) => {
@@ -1014,6 +1026,9 @@ app.get(/^\/api\/manga\/(.+)\/chapters$/, async (req, res) => {
         // Fast path ONLY for WeebCentral since it has reliable images (Comick images are blocked by Cloudflare)
         if (providerName === 'weebcentral' && chapters.length > 0) {
             console.log(`[Chapters] FAST PATH: WeebCentral returned ${chapters.length} chapters.`);
+            if (!data.id) data.id = decodedId;
+            if (!data.title) data.title = searchTitle;
+            if (!data.image) data.image = `https://temp.compsci88.com/cover/normal/${decodedId.split('/')[0]}.webp`;
             const payload = mapChapters(data, providerName as string);
             cache.set(cacheKey, payload);
             return res.json(payload);

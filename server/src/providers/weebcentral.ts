@@ -186,9 +186,17 @@ export class WeebCentralService {
         return { results };
     }
 
-    public async fetchMangaInfo(mangaId: string): Promise<{ chapters: WeebCentralChapter[] }> {
+    public async fetchMangaInfo(mangaId: string): Promise<{
+        id: string;
+        title: string;
+        image: string;
+        description: string;
+        type: string;
+        chapters: WeebCentralChapter[];
+    }> {
         const realId = mangaId.split('/')[0];
-        const url = `https://weebcentral.com/series/${realId}/full-chapter-list`;
+        const chapterListUrl = `https://weebcentral.com/series/${realId}/full-chapter-list`;
+        const seriesUrl = `https://weebcentral.com/series/${realId}`;
         const headers: Record<string, string> = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Referer': `https://weebcentral.com/series/${realId}`
@@ -218,28 +226,72 @@ export class WeebCentralService {
             return chapters;
         };
 
-        // 1. Try direct fetch
+        const parseSeriesMeta = (html: string) => {
+            const $ = loadCheerio(html);
+            const ogTitle = $('meta[property="og:title"]').attr('content')?.replace(/\s*\|\s*Weeb\s*Central/i, '').trim();
+            const h1Title = $('h1').first().text().trim();
+            const title = ogTitle || h1Title || '';
+            const image = `https://temp.compsci88.com/cover/normal/${realId}.webp`;
+            let description = '';
+            $('p').each((_: any, el: any) => {
+                const t = $(el).text().trim();
+                if (t.length > 50 && !t.includes('Weeb Central') && !description) {
+                    description = t;
+                }
+            });
+            const typeTip = $('section [data-tip]').attr('data-tip')?.toLowerCase();
+            const type = typeTip === 'manhwa' ? 'manhwa' : (typeTip === 'manhua' ? 'manhua' : 'manga');
+            return { title, image, description, type };
+        };
+
+        let chapters: WeebCentralChapter[] = [];
+        let meta = {
+            title: '',
+            image: `https://temp.compsci88.com/cover/normal/${realId}.webp`,
+            description: '',
+            type: 'manga'
+        };
+
+        // 1. Try direct fetch in parallel
         try {
-            const directRes = await fetch(url, { headers });
-            if (directRes.ok) {
-                const html = await directRes.text();
-                const chapters = parseChapters(html);
-                if (chapters.length > 0) return { chapters };
+            const [chRes, metaRes] = await Promise.all([
+                fetch(chapterListUrl, { headers }),
+                fetch(seriesUrl, { headers })
+            ]);
+            if (chRes.ok) {
+                chapters = parseChapters(await chRes.text());
+            }
+            if (metaRes.ok) {
+                meta = parseSeriesMeta(await metaRes.text());
             }
         } catch {}
 
-        // 2. Direct fetch blocked -> Stealth Puppeteer
-        try {
-            const stealthRes = await this.evaluateFetch(url, headers);
-            if (stealthRes.status === 200) {
-                const chapters = parseChapters(stealthRes.text);
-                return { chapters };
+        // 2. Direct fetch blocked -> Stealth Puppeteer in parallel
+        if (chapters.length === 0) {
+            try {
+                const [chStealth, metaStealth] = await Promise.all([
+                    this.evaluateFetch(chapterListUrl, headers),
+                    this.evaluateFetch(seriesUrl, headers)
+                ]);
+                if (chStealth.status === 200) {
+                    chapters = parseChapters(chStealth.text);
+                }
+                if (metaStealth.status === 200) {
+                    meta = parseSeriesMeta(metaStealth.text);
+                }
+            } catch (err: any) {
+                console.error('[WeebCentral] Stealth chapters/meta error:', err.message);
             }
-        } catch (err: any) {
-            console.error('[WeebCentral] Stealth chapters error:', err.message);
         }
 
-        return { chapters: [] };
+        return {
+            id: mangaId,
+            title: meta.title,
+            image: meta.image || `https://temp.compsci88.com/cover/normal/${realId}.webp`,
+            description: meta.description,
+            type: meta.type,
+            chapters
+        };
     }
 
     public async fetchChapterPages(chapterId: string): Promise<string[]> {

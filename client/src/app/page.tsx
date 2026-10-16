@@ -758,7 +758,7 @@ export default function HomePage() {
   useEffect(() => {
     let active = true;
     const term = searchQuery.trim();
-    if (!term) {
+    if (term.length < 2) {
       setSuggestions([]);
       setSuggestOpen(false);
       setSuggestLoading(false);
@@ -772,7 +772,7 @@ export default function HomePage() {
         setSuggestions(list.slice(0, 8));
         setSuggestLoading(false);
       }
-    }, 100);
+    }, 300);
     return () => {
       active = false;
       clearTimeout(t);

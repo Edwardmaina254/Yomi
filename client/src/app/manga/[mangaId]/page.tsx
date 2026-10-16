@@ -122,14 +122,15 @@ function MangaDetailsContent() {
         const data = await res.json();
         if (cancelled) return;
         const backendManga = data.manga;
-        const backendTitle = extractString(backendManga?.title) || "";
+        const backendTitle = extractString(backendManga?.title) || initialTitle || "";
+        const fallbackCover = backendManga?.coverUrl || (provider === 'weebcentral' && mangaId ? `https://temp.compsci88.com/cover/normal/${mangaId.split('/')[0]}.webp` : null);
         if (backendTitle && !looksLikeId(backendTitle)) rememberTitle(mangaId, backendTitle);
         const resolvedType =
           backendManga?.type ||
-          getMangaType(mangaId, provider, extractString(backendManga?.title));
+          getMangaType(mangaId, provider, backendTitle);
         setManga(
           backendManga
-            ? { ...backendManga, type: resolvedType }
+            ? { ...backendManga, title: backendTitle, coverUrl: fallbackCover, type: resolvedType }
             : null
         );
         /* Sources (esp. weebcentral search) rarely return a type — probe

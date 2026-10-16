@@ -71,8 +71,15 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Proxy endpoint to bypass CORS and hotlinking restrictions
-app.get('/health', (req, res) => res.status(200).send('OK'));
+// Ultra-lightweight health endpoint for cron-job.org / uptime monitors
+app.all('/health', (req, res) => {
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    if (req.method === 'HEAD') {
+        return res.status(200).end();
+    }
+    res.setHeader('Content-Length', '2');
+    res.status(200).end('OK');
+});
 
 app.get('/api/debug/mangafire', async (req, res) => {
     try {

@@ -28,7 +28,7 @@ import {
   detectKnownWebtoon,
 } from "@/lib/types";
 import { findContinue, findContinueByTitle, chapterLabel, removeFromShelf, isDeletedFromShelf } from "@/lib/continue";
-import { Search, Moon, Sun, ChevronRight, ChevronLeft, Bookmark } from "lucide-react";
+import { Search, Moon, Sun, ChevronRight, ChevronLeft, Bookmark, RotateCw } from "lucide-react";
 import { AccountButton } from "@/components/AccountBar";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -624,6 +624,14 @@ export default function HomePage() {
   const [continueReading, setContinueReading] = useState<ContinueItem[]>([]);
   const pool = useRef<MangaResult[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [now, setNow] = useState(() => new Date());
+  const [greeting, setGreeting] = useState(() => getGreeting());
+  const lastLoadRef = useRef(Date.now());
+  const mainRef = useRef<HTMLDivElement>(null);
+  const pullStartRef = useRef<number | null>(null);
+  const [pullDistance, setPullDistance] = useState(0);
+
   const [trendingTimeframe, setTrendingTimeframe] = useState<"day" | "week" | "month">(() => {
     try {
       const saved = localStorage.getItem("yomi.trendTF");
@@ -680,6 +688,83 @@ export default function HomePage() {
       setLoading(false);
     }
   }, []);
+
+  const refreshHome = useCallback(async () => {
+    setRefreshing(true);
+    const d = new Date();
+    setNow(d);
+    setGreeting(getGreeting());
+    setContinueReading(loadContinueReading());
+    await load(trendingTimeframe);
+    lastLoadRef.current = Date.now();
+    setRefreshing(false);
+  }, [load, trendingTimeframe]);
+
+  // Live time-sensitive clock: update greeting and date dynamically every 30 seconds
+  useEffect(() => {
+    const tick = () => {
+      const d = new Date();
+      setNow(d);
+      setGreeting(getGreeting());
+    };
+    const timer = setInterval(tick, 30000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Reactive tab focus & visibility revalidation: refresh data when coming back to app
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        const d = new Date();
+        setNow(d);
+        setGreeting(getGreeting());
+        if (Date.now() - lastLoadRef.current > 4 * 60 * 1000) {
+          refreshHome();
+        }
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("focus", onVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("focus", onVisibility);
+    };
+  }, [refreshHome]);
+
+  // Mobile pull-to-refresh gesture listeners
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const el = mainRef.current;
+    if (el && el.scrollTop <= 2) {
+      pullStartRef.current = e.touches[0].clientY;
+    } else {
+      pullStartRef.current = null;
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (pullStartRef.current === null) return;
+    const el = mainRef.current;
+    if (el && el.scrollTop > 2) {
+      pullStartRef.current = null;
+      setPullDistance(0);
+      return;
+    }
+    const currentY = e.touches[0].clientY;
+    const diff = currentY - pullStartRef.current;
+    if (diff > 0) {
+      setPullDistance(Math.min(diff * 0.45, 75));
+    } else {
+      setPullDistance(0);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (pullDistance >= 45 && !refreshing) {
+      refreshHome();
+    }
+    pullStartRef.current = null;
+    setPullDistance(0);
+  };
 
   useEffect(() => {
     setContinueReading(loadContinueReading());
@@ -809,8 +894,6 @@ export default function HomePage() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const greeting = getGreeting();
-
   const renderDropRow = (manga: MangaResult) => (
     <Link
       key={manga.id}
@@ -842,11 +925,22 @@ export default function HomePage() {
       <aside className="yomi-rail">
         <div className="mark">読</div>
         <div style={{ height: 10 }} />
-        <Link href="/" className="active" title="Home">
+        <button
+          type="button"
+          onClick={() => {
+            if (mainRef.current && mainRef.current.scrollTop > 50) {
+              mainRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+            refreshHome();
+          }}
+          className="active"
+          title="Refresh Home"
+          style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+        >
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 10.5 12 3l9 7.5" /><path d="M5 9.5V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.5" />
           </svg>
-        </Link>
+        </button>
         <Link href="/library" title="Library">
           <Bookmark size={22} />
         </Link>
@@ -855,7 +949,13 @@ export default function HomePage() {
       </aside>
 
       {/* Main content */}
-      <div className="yomi-main">
+      <div
+        className="yomi-main"
+        ref={mainRef}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
         <div className="yomi-view">
           {/* Mobile topbar */}
           <header className="yomi-topbar">
@@ -868,16 +968,39 @@ export default function HomePage() {
             </div>
             <div className="yomi-topbar-actions">
               <AccountButton variant="bar" />
+              <button
+                className="yomi-iconbtn"
+                onClick={refreshHome}
+                aria-label="Refresh homepage"
+                title="Refresh homepage"
+                disabled={refreshing}
+              >
+                <RotateCw size={18} className={refreshing ? "yomi-spin" : ""} />
+              </button>
               <button className="yomi-iconbtn" onClick={toggleTheme} aria-label="Toggle theme">
                 {theme === "night" ? <Moon size={21} /> : <Sun size={21} />}
               </button>
             </div>
           </header>
 
-          {/* Greeting */}
+          {/* Pull to refresh visual indicator */}
+          {(pullDistance > 0 || refreshing) && (
+            <div
+              className="yomi-pull-indicator"
+              style={{
+                opacity: pullDistance > 0 ? Math.min(1, pullDistance / 40) : 1,
+                transform: `translateY(${Math.min(pullDistance * 0.2, 12)}px)`
+              }}
+            >
+              <RotateCw size={14} className={refreshing ? "yomi-spin" : ""} />
+              <span>{refreshing ? "Updating feeds..." : pullDistance >= 45 ? "Release to refresh" : "Pull to refresh"}</span>
+            </div>
+          )}
+
+          {/* Greeting & Date */}
           <div className="yomi-greeting">
             <p className="eyebrow" suppressHydrationWarning>
-              {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+              {now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
             </p>
             <h1 suppressHydrationWarning>{greeting}.</h1>
           </div>
@@ -1131,13 +1254,23 @@ export default function HomePage() {
 
       {/* Mobile tab bar */}
       <nav className="yomi-tabbar">
-        <Link href="/" className="yomi-tab active">
+        <button
+          type="button"
+          onClick={() => {
+            if (mainRef.current && mainRef.current.scrollTop > 50) {
+              mainRef.current.scrollTo({ top: 0, behavior: "smooth" });
+            }
+            refreshHome();
+          }}
+          className="yomi-tab active"
+          style={{ background: "none", border: "none", cursor: "pointer" }}
+        >
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 10.5 12 3l9 7.5" /><path d="M5 9.5V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.5" />
           </svg>
           Home
           <span className="dot" />
-        </Link>
+        </button>
         <Link href="/library" className="yomi-tab">
           <Bookmark size={22} />
           Library

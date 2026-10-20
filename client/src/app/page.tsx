@@ -627,6 +627,7 @@ export default function HomePage() {
   const [refreshing, setRefreshing] = useState(false);
   const [now, setNow] = useState(() => new Date());
   const [greeting, setGreeting] = useState(() => getGreeting());
+  const [clientTime, setClientTime] = useState<{ dateStr: string; greeting: string } | null>(null);
   const lastLoadRef = useRef(Date.now());
   const mainRef = useRef<HTMLDivElement>(null);
   const pullStartRef = useRef<number | null>(null);
@@ -693,21 +694,32 @@ export default function HomePage() {
     setRefreshing(true);
     const d = new Date();
     setNow(d);
-    setGreeting(getGreeting());
+    const g = getGreeting(d);
+    setGreeting(g);
+    setClientTime({
+      dateStr: d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }),
+      greeting: g,
+    });
     setContinueReading(loadContinueReading());
     await load(trendingTimeframe);
     lastLoadRef.current = Date.now();
     setRefreshing(false);
   }, [load, trendingTimeframe]);
 
-  // Live time-sensitive clock: update greeting and date dynamically every 30 seconds
+  // Live time-sensitive clock: update greeting and date dynamically
   useEffect(() => {
     const tick = () => {
       const d = new Date();
       setNow(d);
-      setGreeting(getGreeting());
+      const g = getGreeting(d);
+      setGreeting(g);
+      setClientTime({
+        dateStr: d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }),
+        greeting: g,
+      });
     };
-    const timer = setInterval(tick, 30000);
+    tick(); // Sync immediately on client mount
+    const timer = setInterval(tick, 2000);
     return () => clearInterval(timer);
   }, []);
 
@@ -717,7 +729,12 @@ export default function HomePage() {
       if (document.visibilityState === "visible") {
         const d = new Date();
         setNow(d);
-        setGreeting(getGreeting());
+        const g = getGreeting(d);
+        setGreeting(g);
+        setClientTime({
+          dateStr: d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }),
+          greeting: g,
+        });
         if (Date.now() - lastLoadRef.current > 4 * 60 * 1000) {
           refreshHome();
         }
@@ -1002,9 +1019,9 @@ export default function HomePage() {
           {/* Greeting & Date */}
           <div className="yomi-greeting">
             <p className="eyebrow" suppressHydrationWarning>
-              {now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+              {clientTime ? clientTime.dateStr : now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
             </p>
-            <h1 suppressHydrationWarning>{greeting}.</h1>
+            <h1 suppressHydrationWarning>{(clientTime ? clientTime.greeting : greeting)}.</h1>
           </div>
 
           <div style={{ height: 16 }} />

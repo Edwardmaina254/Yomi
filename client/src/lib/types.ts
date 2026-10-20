@@ -1008,13 +1008,12 @@ export function providerLabel(p?: string): string {
   }
 }
 
-export function getGreeting(): string {
-  const h = new Date().getHours();
-  if (h < 5) return "Late night reader";
-  if (h < 12) return "Good morning";
-  if (h < 17) return "Good afternoon";
-  if (h < 22) return "Good evening";
-  return "Deep night";
+export function getGreeting(date: Date = new Date()): string {
+  const h = date.getHours();
+  if (h >= 5 && h < 12) return "Good morning";
+  if (h >= 12 && h < 17) return "Good afternoon";
+  if (h >= 17 && h < 22) return "Good evening";
+  return "Late night reader";
 }
 
 export function timeAgo(dateStr: string): string {

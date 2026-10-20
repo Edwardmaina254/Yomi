@@ -165,8 +165,8 @@ export class WeebCentralService {
     }
 
     public async search(q: string): Promise<{ results: WeebCentralSearchResult[] }> {
-        const cleanQ = q.replace(/[^a-zA-Z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
-        const searchUrl = (term: string) => `https://weebcentral.com/search/data?text=${encodeURIComponent(term)}&limit=32&offset=0&display_mode=Full+Display`;
+        const cleanQ = q.replace(/['’]s/gi, '').replace(/[^a-zA-Z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+        const searchUrl = (term: string) => `https://weebcentral.com/search/data?text=${encodeURIComponent(term)}&sort=Best+Match&order=Descending&official=Any&anime=Any&adult=Any&limit=32&offset=0&display_mode=Full+Display`;
 
         const fetchTerm = async (term: string): Promise<{ blocked: boolean; results: WeebCentralSearchResult[] }> => {
             const url = searchUrl(term);
@@ -198,20 +198,35 @@ export class WeebCentralService {
             return { blocked: true, results: [] };
         };
 
-        let { blocked, results } = await fetchTerm(cleanQ);
-        if (results.length === 0 && cleanQ !== q && !blocked) {
-            const res2 = await fetchTerm(q);
+        let { blocked, results } = await fetchTerm(q.trim());
+        if (results.length === 0 && cleanQ && cleanQ !== q.trim()) {
+            const res2 = await fetchTerm(cleanQ);
             results = res2.results;
         }
-        if (results.length === 0 && !blocked) {
-            const words = cleanQ.split(' ').filter(w => w.length > 2);
-            if (words.length > 1) {
-                const shortQ = words.slice(0, 2).join(' ');
-                const res3 = await fetchTerm(shortQ);
+        if (results.length === 0) {
+            const stripped = cleanQ.replace(/^(the|a|an)\s+/i, '').trim();
+            if (stripped && stripped !== cleanQ) {
+                const res3 = await fetchTerm(stripped);
                 results = res3.results;
             }
         }
-        return { results };
+        if (results.length === 0) {
+            const words = cleanQ.split(' ').filter(w => w.length > 2);
+            if (words.length > 1) {
+                const shortQ = words.slice(0, 2).join(' ');
+                const res4 = await fetchTerm(shortQ);
+                results = res4.results;
+            }
+        }
+
+        const seen = new Set<string>();
+        const deduped = results.filter(r => {
+            if (seen.has(r.id)) return false;
+            seen.add(r.id);
+            return true;
+        });
+
+        return { results: deduped };
     }
 
     public async getCatalog(options: {

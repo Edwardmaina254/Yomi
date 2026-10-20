@@ -832,14 +832,11 @@ export function getProxyUrl(url: string): string {
   // Public reader CDNs hotlink fine cross-origin — no proxy needed to display.
   const directHosts = [
     "cdn.myanimelist.net",
-    "comick",
-    "comicknew.pictures",
     "uploads.mangadex.org",
     "mangadex.org",
     "weebcentral.com",
     "compsci88.com",
     "compsci88",
-    "meo.comick",
   ];
   if (directHosts.some((h) => url.includes(h))) return url;
   // Always use a relative path for proxy so it hits Next.js port 3000 (and is rewritten)
@@ -847,7 +844,7 @@ export function getProxyUrl(url: string): string {
   return `/api/proxy?url=${encodeURIComponent(url)}`;
 }
 
-/* ── Home data: Yomi backend routes first, Jikan/ComicK direct fallback ── */
+/* ── Home data: Yomi backend routes first, Jikan direct fallback ── */
 
 function mapBackendResult(m: any): MangaResult {
   return {
@@ -889,38 +886,6 @@ async function fetchJikanTop(type: string, limit: number): Promise<MangaResult[]
   }
 }
 
-async function fetchComickTop(limit: number): Promise<MangaResult[]> {
-  try {
-    const res = await fetch(`https://api.comick.io/top?limit=${limit}&nsfw=false`);
-    if (!res.ok) return [];
-    const arr = await res.json();
-    const raw = Array.isArray(arr) ? arr : arr.data || [];
-    const list = raw
-      .map((c: any): MangaResult | null => {
-        const comic = c.comic || c;
-        if (!comic?.slug) return null;
-        const coverB2 = comic.md_covers?.[0]?.b2key;
-        return {
-          id: comic.slug,
-          title: extractString(comic.title || comic.slug),
-          coverUrl: coverB2 ? `https://meo.comick.io/${coverB2}` : null,
-          synopsis: extractString(comic.desc),
-          provider: "comick",
-          status: comic.status || "",
-          score: comic.rating ?? undefined,
-          genres: (comic.genres || [])
-            .map((g: any) => (typeof g === "string" ? g : g.name))
-            .filter(Boolean),
-          type: "",
-        };
-      })
-      .filter((m: MangaResult | null): m is MangaResult => m !== null);
-    rememberResults(list);
-    return list;
-  } catch {
-    return [];
-  }
-}
 
 export async function fetchHomeData(
   timeframe: "day" | "week" | "month" = "month"
@@ -995,8 +960,6 @@ export function providerLabel(p?: string): string {
   switch (p) {
     case "jikan":
       return "MyAnimeList";
-    case "comick":
-      return "ComicK";
     case "mangadex":
       return "MangaDex";
     case "weebcentral":
@@ -1058,7 +1021,7 @@ export const SFX = ["ドン", "バシ", "ゴゴ", "ザザ", "ドド", "バン", 
 /* ── Direct-MangaDex genre search (CORS-open, fully frontend) ─────────────
    Utilised by "Find similar titles" + genre pills. MangaDex is reachable from
    the browser without the backend, so similar-titles returns real content even
-   while Jikan/ComicK are down or Antigravity's genre route is still building. */
+   while Jikan is down or Antigravity's genre route is still building. */
 let mdTagCache: Array<{ id: string; name: string }> | null = null;
 
 async function loadMangaDexTags(): Promise<Array<{ id: string; name: string }>> {

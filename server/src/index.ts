@@ -138,7 +138,7 @@ app.get('/api/proxy', async (req, res) => {
         const host = parsedUrl.hostname.toLowerCase();
         const allowedKeywords = [
             'mangadex', 'mangapill', 'readdetectiveconan', 'weebcentral', 'compsci88', 'lastation', 'lowee', 'planeptune', 'leanbox',
-            'comick', 'mangahere', 'zjcdn', 'fmcdn', 'webtoon', 'pstatic', 'myanimelist', 'mfcdn', 'mangafire'
+            'mangahere', 'zjcdn', 'fmcdn', 'webtoon', 'pstatic', 'myanimelist', 'mfcdn', 'mangafire'
         ];
         if (!allowedKeywords.some(keyword => host.includes(keyword))) {
             return res.status(403).send('Forbidden: Domain not in proxy allowlist');
@@ -153,8 +153,6 @@ app.get('/api/proxy', async (req, res) => {
             referer = 'https://weebcentral.com/';
         } else if (targetUrl.includes('mfcdn') || targetUrl.includes('mangafire')) {
             referer = 'https://mangafire.to/';
-        } else if (targetUrl.includes('comicknew.pictures') || targetUrl.includes('comick')) {
-            referer = 'https://comick.art/';
         } else if (targetUrl.includes('mangahere') || targetUrl.includes('zjcdn') || targetUrl.includes('fmcdn')) {
             referer = 'https://www.mangahere.cc/';
         } else if (targetUrl.includes('webtoon') || targetUrl.includes('pstatic.net')) {
@@ -198,7 +196,6 @@ const getProvider = (name?: string) => {
         case 'mangapill': return new MANGA.MangaPill();
         case 'mangahere': return new MANGA.MangaHere();
         case 'mangafire': return mangaFireService as any;
-        case 'comick': return new MANGA.ComicK();
         case 'weebcentral': return new MANGA.WeebCentral();
         default: return new MANGA.WeebCentral();
     }
@@ -610,10 +607,9 @@ app.get('/api/search', async (req, res) => {
         return res.json(cache.get(cacheKey));
     }
 
-    // High-speed provider selection: WeebCentral (King) + ComicK & MangaDex (fast HTTP APIs)
+    // High-speed provider selection: WeebCentral (King for all manga & manhwa) + fallback
     const providers = [
         { name: 'weebcentral', instance: new MANGA.WeebCentral() },
-        { name: 'comick', instance: createComicK() },
         { name: 'mangadex', instance: new MANGA.MangaDex() },
         { name: 'mangapill', instance: new MANGA.MangaPill() }
     ];
@@ -653,7 +649,8 @@ app.get('/api/search', async (req, res) => {
             } else {
                 searchPromise = p.instance.search(q as string).then(data => ({ providerName: p.name, data }));
             }
-            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Provider timeout')), 2500));
+            const timeoutMs = p.name === 'weebcentral' ? 12000 : 3500;
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Provider timeout')), timeoutMs));
             return Promise.race([searchPromise, timeoutPromise]);
         });
 
@@ -682,8 +679,6 @@ app.get('/api/search', async (req, res) => {
 
         allResults.forEach(manga => {
             const titleLower = sanitizeTitle(manga.title);
-            // Find an existing group for this exact title. 
-            // We ignore provider uniqueness to aggressively deduplicate exact matches (e.g. ComicK returning multiple Ordeals)
             let group = groups.find(g => sanitizeTitle(g[0].title) === titleLower);
 
             if (group) {
@@ -694,7 +689,7 @@ app.get('/api/search', async (req, res) => {
         });
 
         let finalResults = groups.map(group => {
-            const order: Record<string, number> = { 'weebcentral': 5, 'mangafire': 4, 'comick': 3, 'mangadex': 2, 'mangapill': 1 };
+            const order: Record<string, number> = { 'weebcentral': 100, 'mangafire': 10, 'mangadex': 5, 'mangapill': 1 };
             group.sort((a, b) => (order[b.provider] || 0) - (order[a.provider] || 0));
             
             const best = group[0];
@@ -753,92 +748,9 @@ app.get('/api/search', async (req, res) => {
     }
 });
 
-const createComicK = () => {
-    const i = new MANGA.ComicK();
-    (i as any).fetchMangaInfo = async (mangaId: string) => {
-        const cleanId = mangaId.split('/')[0];
-        let data: any;
-        try {
-            data = await (i as any).getComicData(cleanId);
-        } catch {
-            const res = await fetch(`https://comick.art/comic/${cleanId}`, {
-                headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
-            });
-            const html = await res.text();
-            const match = html.match(/<script id=['"]comic-data['"][^>]*>([\s\S]*?)<\/script>/);
-            if (match) {
-                data = JSON.parse(match[1]);
-            }
-        }
-        
-        const slug = data?.comic?.slug || data?.slug || cleanId;
-        const comicObj = data?.comic || data || {};
-        const mangaInfo = {
-            id: slug,
-            title: comicObj.title || cleanId,
-            altTitles: comicObj.md_titles || [],
-            description: comicObj.desc || '',
-            genres: comicObj.md_comic_md_genres?.map((g: any) => g.md_genres?.name).filter(Boolean) || [],
-            status: comicObj.status === 1 ? 'Ongoing' : 'Completed',
-            image: comicObj.default_thumbnail || `https://cdn2.comicknew.pictures/${slug}/covers/${comicObj.md_covers?.[0]?.bkey || ''}.webp`,
-            malId: comicObj.links?.mal,
-            chapters: [] as any[],
-        };
-
-        // Fetch all chapter pages in parallel batches (up to 40 pages = 2400 chapters!)
-        const pageBatches = [
-            Array.from({ length: 15 }, (_, idx) => idx + 1),
-            Array.from({ length: 15 }, (_, idx) => idx + 16),
-            Array.from({ length: 15 }, (_, idx) => idx + 31)
-        ];
-
-        const seenHids = new Set<string>();
-        const seenChapters = new Set<string>();
-
-        for (const batch of pageBatches) {
-            let foundInBatch = 0;
-            const batchResults = await Promise.allSettled(
-                batch.map(p => fetch(`https://comick.art/api/comics/${slug}/chapter-list?page=${p}`, {
-                    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
-                }).then(r => r.json()).then((j: any) => j.data || []))
-            );
-
-            for (const res of batchResults) {
-                if (res.status === 'fulfilled' && Array.isArray(res.value)) {
-                    for (const ch of res.value) {
-                        if (ch.lang === 'en' && !seenHids.has(ch.hid)) {
-                            seenHids.add(ch.hid);
-                            const chapNum = String(ch.chap ?? '0');
-                            if (!seenChapters.has(chapNum)) {
-                                seenChapters.add(chapNum);
-                                foundInBatch++;
-                                mangaInfo.chapters.push({
-                                    id: `${slug}/${ch.hid}-chapter-${ch.chap}-en`,
-                                    title: ch.title ? `Chapter ${ch.chap} - ${ch.title}` : `Chapter ${ch.chap}`,
-                                    chapterNumber: chapNum,
-                                    volumeNumber: ch.vol,
-                                    releaseDate: ch.created_at,
-                                    lang: ch.lang,
-                                });
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (foundInBatch === 0) break;
-        }
-
-        mangaInfo.chapters.sort((a, b) => parseFloat(b.chapterNumber || '0') - parseFloat(a.chapterNumber || '0'));
-        return mangaInfo;
-    };
-    return i;
-};
-
 const FALLBACK_PROVIDERS = [
     { name: 'weebcentral', instance: () => new MANGA.WeebCentral() },
     { name: 'mangafire', instance: () => mangaFireService },
-    { name: 'comick', instance: createComicK },
     { name: 'mangapill', instance: () => new MANGA.MangaPill() },
     { name: 'mangadex', instance: () => new MANGA.MangaDex() }
 ];
@@ -900,23 +812,13 @@ const mapChapters = (data: any, resolvedProvider: string) => {
             };
         });
         // Deduplicate:
-        // For ComicK: ComicK returns multiple scanlation groups for the same chapter number
-        // For WeebCentral, MangaDex, MangaFire, MangaPill: keep authentic chapters deduplicated by chapter ID
-        if (resolvedProvider === 'comick') {
-            const seenNum = new Set<string>();
-            return mapped.filter((ch: any) => {
-                if (seenNum.has(ch.chapterNumber)) return false;
-                seenNum.add(ch.chapterNumber);
-                return true;
-            });
-        } else {
-            const seenId = new Set<string>();
-            return mapped.filter((ch: any) => {
-                if (seenId.has(ch.id)) return false;
-                seenId.add(ch.id);
-                return true;
-            });
-        }
+        // Keep authentic chapters deduplicated by chapter ID
+        const seenId = new Set<string>();
+        return mapped.filter((ch: any) => {
+            if (seenId.has(ch.id)) return false;
+            seenId.add(ch.id);
+            return true;
+        });
     })()
     };
 };
@@ -1103,7 +1005,7 @@ app.get(/^\/api\/manga\/(.+)\/chapters$/, async (req, res) => {
         }
         if (!searchTitle || searchTitle === decodedId) searchTitle = reqTitle as string || decodedId;
 
-        // Fast path ONLY for WeebCentral since it has reliable images (Comick images are blocked by Cloudflare)
+        // Fast path for WeebCentral since it has reliable, complete chapter coverage and working images
         if (providerName === 'weebcentral' && chapters.length > 0) {
             console.log(`[Chapters] FAST PATH: WeebCentral returned ${chapters.length} chapters.`);
             if (!data.id) data.id = decodedId;
@@ -1114,7 +1016,7 @@ app.get(/^\/api\/manga\/(.+)\/chapters$/, async (req, res) => {
             return res.json(payload);
         }
 
-        // Run sequential fallbacks for MangaDex and Comick (to fetch WeebCentral's working images)
+        // Run sequential fallbacks for MangaDex and other providers
         if (fallbackPromises.length === 0) {
             console.log(`[Chapters] Running sequential fallbacks for "${searchTitle}"...`);
             
@@ -1171,7 +1073,6 @@ app.get(/^\/api\/manga\/(.+)\/chapters$/, async (req, res) => {
             let score = r.count * 10;
             if (r.provider === 'weebcentral') score += 1000000; // King of chapters, completeness & reliability
             if (r.provider === 'mangafire') score += 800000; // Massive high-res catalog, complete chapters
-            if (r.provider === 'comick') score += 50000; // Complete chapter coverage across all pages!
             if (r.provider === 'mangapill') score += 5000;
             if (r.provider === 'mangadex') score += 100;
             if (r.provider === providerName && providerName !== 'mangadex' && providerName !== 'weebcentral') score += 10000;

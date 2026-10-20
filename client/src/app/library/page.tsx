@@ -247,7 +247,6 @@ export default function LibraryPage() {
        that guarantees the format; otherwise leave it unclassified (All tab
        only) and let the MangaDex title probe resolve it in the load effect. */
     const pn = (i.provider || "").toLowerCase();
-    if (pn.includes("comick")) return "comic";
     if (pn.includes("jikan")) return "manga";
     return "";
   };

@@ -13,6 +13,20 @@ export interface WeebCentralSearchResult {
     type: string;
 }
 
+export interface WeebCentralCatalogItem {
+    id: string;
+    title: string;
+    coverUrl: string;
+    synopsis: string;
+    provider: 'weebcentral';
+    status?: string;
+    score?: number;
+    type?: string;
+    genres?: string[];
+    author?: string;
+    updatedAt?: string;
+}
+
 export interface WeebCentralChapter {
     id: string;
     chapterNumber: string;
@@ -186,12 +200,112 @@ export class WeebCentralService {
         return { results };
     }
 
+    public async getCatalog(options: {
+        sort?: 'Popularity' | 'Latest Updates' | 'Subscribers' | 'Recently Added' | 'Alphabet' | 'Best Match';
+        order?: 'Descending' | 'Ascending';
+        type?: 'Manga' | 'Manhwa' | 'Manhua' | 'OEL';
+        limit?: number;
+        offset?: number;
+    }): Promise<WeebCentralCatalogItem[]> {
+        const sort = options.sort || 'Popularity';
+        const order = options.order || 'Descending';
+        const limit = options.limit || 32;
+        const offset = options.offset || 0;
+        let url = `https://weebcentral.com/search/data?sort=${encodeURIComponent(sort)}&order=${encodeURIComponent(order)}&display_mode=Full+Display&limit=${limit}&offset=${offset}&adult=False`;
+        if (options.type) {
+            url += `&included_type=${encodeURIComponent(options.type)}`;
+        }
+
+        const headers: Record<string, string> = {
+            'HX-Request': 'true',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Referer': 'https://weebcentral.com/search'
+        };
+
+        const parseCatalogItems = (html: string): WeebCentralCatalogItem[] => {
+            const $ = loadCheerio(html);
+            const items: WeebCentralCatalogItem[] = [];
+            $('article.bg-base-300').each((_: any, el: any) => {
+                const link = $(el).find('a[href*="/series/"]').first();
+                const href = link.attr('href') || '';
+                const idMatch = href.match(/\/series\/([^\/\s]+(?:\/[^\/\s]+)?)/);
+                const id = idMatch ? idMatch[1] : href.split('/series/')[1];
+                if (!id) return;
+
+                const realId = id.split('/')[0];
+                const title = $(el).find('section.hidden.lg\\:block .tooltip a').text().trim() 
+                           || $(el).find('section a .text-ellipsis').text().trim()
+                           || $(el).find('.text-ellipsis').text().trim()
+                           || $(el).find('a[href*="/series/"]').last().text().trim();
+
+                const coverUrl = `https://temp.compsci88.com/cover/normal/${realId}.webp`;
+
+                let rawType = $(el).find('strong:contains("Type:")').next('span').text().trim().toLowerCase();
+                if (!rawType) {
+                    rawType = $(el).find('[data-tip]').attr('data-tip')?.toLowerCase() || '';
+                }
+                let type = 'manga';
+                if (rawType.includes('manhwa')) type = 'manhwa';
+                else if (rawType.includes('manhua')) type = 'manhua';
+                else if (rawType.includes('oel') || rawType.includes('comic')) type = 'comic';
+
+                const status = $(el).find('strong:contains("Status:")').next('span').text().trim() || 'Ongoing';
+
+                const genres: string[] = [];
+                $(el).find('strong:contains("Tag(s):")').parent().find('span').each((_: any, span: any) => {
+                    const tag = $(span).text().replace(/,/g, '').trim();
+                    if (tag && tag !== 'Tag(s):') genres.push(tag);
+                });
+
+                const author = $(el).find('strong:contains("Author(s):")').parent().find('a').text().trim();
+
+                items.push({
+                    id,
+                    title,
+                    coverUrl,
+                    synopsis: '',
+                    provider: 'weebcentral',
+                    status,
+                    type,
+                    genres: Array.from(new Set(genres)),
+                    author,
+                    updatedAt: new Date().toISOString()
+                });
+            });
+            return items;
+        };
+
+        // 1. Direct Node fetch
+        try {
+            const directRes = await fetch(url, { headers });
+            if (directRes.ok) {
+                const text = await directRes.text();
+                const items = parseCatalogItems(text);
+                if (items.length > 0) return items;
+            }
+        } catch {}
+
+        // 2. Direct fetch blocked -> Stealth Puppeteer
+        try {
+            const stealthRes = await this.evaluateFetch(url, headers);
+            if (stealthRes.status === 200) {
+                return parseCatalogItems(stealthRes.text);
+            }
+        } catch (err: any) {
+            console.error('[WeebCentral] Stealth catalog error:', err.message);
+        }
+
+        return [];
+    }
+
     public async fetchMangaInfo(mangaId: string): Promise<{
         id: string;
         title: string;
         image: string;
         description: string;
         type: string;
+        status?: string;
+        genres?: string[];
         chapters: WeebCentralChapter[];
     }> {
         const realId = mangaId.split('/')[0];
@@ -232,16 +346,42 @@ export class WeebCentralService {
             const h1Title = $('h1').first().text().trim();
             const title = ogTitle || h1Title || '';
             const image = `https://temp.compsci88.com/cover/normal/${realId}.webp`;
+
             let description = '';
-            $('p').each((_: any, el: any) => {
-                const t = $(el).text().trim();
-                if (t.length > 50 && !t.includes('Weeb Central') && !description) {
-                    description = t;
-                }
+            $('strong:contains("Description")').each((_: any, el: any) => {
+                const parent = $(el).parent();
+                const p = parent.find('p').text().trim() || parent.next('p').text().trim() || parent.next().text().trim();
+                if (p) description = p;
             });
+            if (!description) {
+                $('p').each((_: any, el: any) => {
+                    const t = $(el).text().trim();
+                    if (t.length > 50 && !t.includes('Weeb Central') && !description) {
+                        description = t;
+                    }
+                });
+            }
+
+            let status = 'Ongoing';
+            $('strong:contains("Status")').each((_: any, el: any) => {
+                const s = $(el).next().text().trim() || $(el).parent().find('span').text().trim();
+                if (s) status = s;
+            });
+
+            const genres: string[] = [];
+            $('strong:contains("Tags(s)")').parent().find('span, a').each((_: any, el: any) => {
+                const t = $(el).text().replace(/,/g, '').trim();
+                if (t && t !== 'Tags(s):') genres.push(t);
+            });
+
             const typeTip = $('section [data-tip]').attr('data-tip')?.toLowerCase();
-            const type = typeTip === 'manhwa' ? 'manhwa' : (typeTip === 'manhua' ? 'manhua' : 'manga');
-            return { title, image, description, type };
+            let rawType = $('strong:contains("Type:")').next('span').text().trim().toLowerCase() || typeTip || '';
+            let type = 'manga';
+            if (rawType.includes('manhwa')) type = 'manhwa';
+            else if (rawType.includes('manhua')) type = 'manhua';
+            else if (rawType.includes('oel') || rawType.includes('comic')) type = 'comic';
+
+            return { title, image, description, type, status, genres: Array.from(new Set(genres)) };
         };
 
         let chapters: WeebCentralChapter[] = [];
@@ -249,7 +389,9 @@ export class WeebCentralService {
             title: '',
             image: `https://temp.compsci88.com/cover/normal/${realId}.webp`,
             description: '',
-            type: 'manga'
+            type: 'manga',
+            status: 'Ongoing',
+            genres: [] as string[]
         };
 
         // 1. Try direct fetch in parallel
@@ -290,6 +432,8 @@ export class WeebCentralService {
             image: meta.image || `https://temp.compsci88.com/cover/normal/${realId}.webp`,
             description: meta.description,
             type: meta.type,
+            status: meta.status,
+            genres: meta.genres,
             chapters
         };
     }

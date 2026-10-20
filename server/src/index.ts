@@ -440,6 +440,37 @@ app.get('/api/trending', async (req, res) => {
         return res.json(cache.get(cacheKey));
     }
 
+    // 1. Primary: WeebCentral Native Catalog
+    try {
+        let wcType: 'Manga' | 'Manhwa' | 'Manhua' | 'OEL' = 'Manga';
+        if (type === 'manhwa') wcType = 'Manhwa';
+        else if (type === 'manhua') wcType = 'Manhua';
+        else if (type === 'comic') wcType = 'OEL';
+
+        let wcSort: 'Popularity' | 'Latest Updates' | 'Subscribers' = 'Popularity';
+        if (timeframe === 'day') {
+            wcSort = 'Popularity';
+        } else if (timeframe === 'month' || timeframe === 'year') {
+            wcSort = 'Subscribers';
+        }
+
+        const wcResults = await weebCentralService.getCatalog({
+            sort: wcSort,
+            order: 'Descending',
+            type: wcType,
+            limit: 32
+        });
+
+        if (wcResults && wcResults.length > 0) {
+            const payload = { results: wcResults.slice(0, 30) };
+            cache.set(cacheKey, payload);
+            return res.json(payload);
+        }
+    } catch (e: any) {
+        console.error('WeebCentral trending error, falling back to MangaDex:', e.message);
+    }
+
+    // 2. Fallback: MangaDex
     try {
         let langQuery = 'originalLanguage[]=ja';
         if (type === 'manhwa') langQuery = 'originalLanguage[]=ko&originalLanguage[]=zh';
@@ -479,6 +510,30 @@ app.get('/api/latest', async (req, res) => {
         return res.json(cache.get(cacheKey));
     }
 
+    // 1. Primary: WeebCentral Native Catalog
+    try {
+        let wcType: 'Manga' | 'Manhwa' | 'Manhua' | 'OEL' = 'Manga';
+        if (type === 'manhwa') wcType = 'Manhwa';
+        else if (type === 'manhua') wcType = 'Manhua';
+        else if (type === 'comic') wcType = 'OEL';
+
+        const wcResults = await weebCentralService.getCatalog({
+            sort: 'Latest Updates',
+            order: 'Descending',
+            type: wcType,
+            limit: 32
+        });
+
+        if (wcResults && wcResults.length > 0) {
+            const payload = { results: wcResults.slice(0, 30) };
+            cache.set(cacheKey, payload);
+            return res.json(payload);
+        }
+    } catch (e: any) {
+        console.error('WeebCentral latest error, falling back to MangaDex:', e.message);
+    }
+
+    // 2. Fallback: MangaDex
     try {
         let langQuery = 'originalLanguage[]=ja';
         if (type === 'manhwa') langQuery = 'originalLanguage[]=ko&originalLanguage[]=zh';
@@ -791,7 +846,10 @@ const mapChapters = (data: any, resolvedProvider: string) => {
             title: data.title,
             coverUrl: cover || null,
             synopsis: data.description || '',
-            type: detectType(data),
+            type: data.type || detectType(data),
+            status: data.status || '',
+            genres: data.genres || [],
+            author: data.author || '',
             resolvedProvider,
         },
     chapters: (() => {
@@ -825,7 +883,7 @@ const mapChapters = (data: any, resolvedProvider: string) => {
                 id: chapter.id,
                 chapterNumber: chapNum || '0',
                 title: displayTitle,
-                pages: 0,
+                pages: chapter.pages || 0,
                 createdAt: chapter.releaseDate || new Date().toISOString(),
                 provider: resolvedProvider,
             };

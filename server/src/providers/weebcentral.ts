@@ -145,8 +145,14 @@ export class WeebCentralService {
                        || $(el).find('.text-ellipsis').text().trim()
                        || $(el).find('a[href*="/series/"]').last().text().trim();
             const image = $(el).find('picture source').first().attr('srcset') || $(el).find('picture img').attr('src');
-            const typeTip = $(el).find('[data-tip]').attr('data-tip')?.toLowerCase();
-            const type = typeTip === 'manhwa' ? 'manhwa' : (typeTip === 'manhua' ? 'manhua' : 'manga');
+            let rawType = $(el).find('strong:contains("Type")').parent().text().trim().toLowerCase();
+            if (!rawType) {
+                rawType = $(el).find('a[href*="included_type="]').text().trim().toLowerCase() || $(el).text().toLowerCase();
+            }
+            let type = 'manga';
+            if (rawType.includes('manhwa')) type = 'manhwa';
+            else if (rawType.includes('manhua')) type = 'manhua';
+            else if (rawType.includes('comic') || rawType.includes('oel')) type = 'comic';
             return { id, title, image: image || '', type };
         }).get().filter(Boolean);
     }
@@ -240,16 +246,16 @@ export class WeebCentralService {
 
                 const coverUrl = `https://temp.compsci88.com/cover/normal/${realId}.webp`;
 
-                let rawType = $(el).find('strong:contains("Type:")').next('span').text().trim().toLowerCase();
+                let rawType = $(el).find('strong:contains("Type")').parent().text().trim().toLowerCase();
                 if (!rawType) {
-                    rawType = $(el).find('[data-tip]').attr('data-tip')?.toLowerCase() || '';
+                    rawType = $(el).find('a[href*="included_type="]').text().trim().toLowerCase() || $(el).find('[data-tip]').attr('data-tip')?.toLowerCase() || '';
                 }
                 let type = 'manga';
                 if (rawType.includes('manhwa')) type = 'manhwa';
                 else if (rawType.includes('manhua')) type = 'manhua';
-                else if (rawType.includes('oel') || rawType.includes('comic')) type = 'comic';
+                else if (rawType.includes('comic') || rawType.includes('oel')) type = 'comic';
 
-                const status = $(el).find('strong:contains("Status:")').next('span').text().trim() || 'Ongoing';
+                const status = $(el).find('strong:contains("Status")').parent().find('span, a').first().text().trim() || $(el).find('strong:contains("Status")').next().text().trim() || 'Ongoing';
 
                 const genres: string[] = [];
                 $(el).find('strong:contains("Tag(s):")').parent().find('span').each((_: any, span: any) => {
@@ -374,12 +380,14 @@ export class WeebCentralService {
                 if (t && t !== 'Tags(s):') genres.push(t);
             });
 
+            const typeParent = $('strong:contains("Type")').parent().text().trim().toLowerCase();
+            const typeLink = $('a[href*="included_type="]').text().trim().toLowerCase();
             const typeTip = $('section [data-tip]').attr('data-tip')?.toLowerCase();
-            let rawType = $('strong:contains("Type:")').next('span').text().trim().toLowerCase() || typeTip || '';
+            let rawType = typeParent || typeLink || typeTip || '';
             let type = 'manga';
             if (rawType.includes('manhwa')) type = 'manhwa';
             else if (rawType.includes('manhua')) type = 'manhua';
-            else if (rawType.includes('oel') || rawType.includes('comic')) type = 'comic';
+            else if (rawType.includes('comic') || rawType.includes('oel')) type = 'comic';
 
             return { title, image, description, type, status, genres: Array.from(new Set(genres)) };
         };

@@ -343,16 +343,22 @@ function ReaderContent() {
         authoritativeRef.current = resolved;
         rememberType(sourceMangaId, resolved, extractString(title));
         if (resolved !== typeParam) setTypeParam(resolved);
-        try {
-          const cont = JSON.parse(localStorage.getItem("yomi.continue") || "[]");
-          const idx = cont.findIndex(
-            (x: any) => x.id === chapterId || (sourceMangaId && x.mangaId === sourceMangaId)
-          );
-          if (idx > -1 && cont[idx].type !== resolved) {
-            cont[idx].type = resolved;
-            localStorage.setItem("yomi.continue", JSON.stringify(cont));
-          }
-        } catch {}
+        for (const storeKey of ["yomi.continue", "yomi.lib"]) {
+          try {
+            const arr = JSON.parse(localStorage.getItem(storeKey) || "[]");
+            let dirty = false;
+            for (const item of arr) {
+              const targetId = storeKey === "yomi.continue" && item.mangaId ? item.mangaId : item.id;
+              if (targetId === sourceMangaId || item.id === sourceMangaId || item.id === chapterId || (title && item.title === title)) {
+                if (item.type !== resolved) {
+                  item.type = resolved;
+                  dirty = true;
+                }
+              }
+            }
+            if (dirty) localStorage.setItem(storeKey, JSON.stringify(arr));
+          } catch {}
+        }
       } catch {} finally {
         if (!cancelled) setProbeDone(true);
       }
@@ -409,16 +415,22 @@ function ReaderContent() {
       rememberType(sourceMangaId, verdict, title);
       if (verdict !== typeParam) setTypeParam(verdict);
       setMode(modeForType(verdict) || "paginated");
-      try {
-        const cont = JSON.parse(localStorage.getItem("yomi.continue") || "[]");
-        const idx = cont.findIndex(
-          (x: any) => x.id === chapterId || (sourceMangaId && x.mangaId === sourceMangaId)
-        );
-        if (idx > -1 && cont[idx].type !== verdict) {
-          cont[idx].type = verdict;
-          localStorage.setItem("yomi.continue", JSON.stringify(cont));
-        }
-      } catch {}
+      for (const storeKey of ["yomi.continue", "yomi.lib"]) {
+        try {
+          const arr = JSON.parse(localStorage.getItem(storeKey) || "[]");
+          let dirty = false;
+          for (const item of arr) {
+            const targetId = storeKey === "yomi.continue" && item.mangaId ? item.mangaId : item.id;
+            if (targetId === sourceMangaId || item.id === sourceMangaId || item.id === chapterId || (title && item.title === title)) {
+              if (item.type !== verdict) {
+                item.type = verdict;
+                dirty = true;
+              }
+            }
+          }
+          if (dirty) localStorage.setItem(storeKey, JSON.stringify(arr));
+        } catch {}
+      }
     })();
     return () => {
       cancelled = true;

@@ -8,6 +8,7 @@ import {
   detectTypeFromTitle,
   detectKnownManga,
   detectKnownWebtoon,
+  detectTypeFromHeuristics,
   extractString,
   getMangaTitle,
   getProxyUrl,
@@ -44,10 +45,11 @@ function loadLib(): LibItem[] {
     if (looksLikeId(title) || !title || title === "Unknown Title") {
       title = getMangaTitle(lookupId, x.provider) || title;
     }
-    // Trust known manga/webtoon facts first!
+    // Trust known manga/webtoon facts & heuristics first!
     const km = detectKnownManga(title);
     const kw = detectKnownWebtoon(title);
-    let resolvedType = km || kw || getMangaType(lookupId, x.provider, title);
+    const h = detectTypeFromHeuristics(title);
+    let resolvedType = km || kw || h || getMangaType(lookupId, x.provider, title);
     if (!resolvedType) {
       resolvedType = (x.type || "").trim().toLowerCase();
     }
@@ -112,10 +114,11 @@ async function healStoredTitles() {
             needsHeal = true;
           }
 
-          // Heal misclassified manga types (e.g. Bleach, One Piece, Black Clover)
+          // Heal misclassified manga/manhwa types (e.g. Bleach, One Piece, Solo Leveling, Lookism)
           const km = detectKnownManga(x.title);
           const kw = detectKnownWebtoon(x.title);
-          const correctType = km || kw;
+          const h = detectTypeFromHeuristics(x.title);
+          const correctType = km || kw || h || getMangaType(lookupId, x.provider, x.title);
           if (correctType && x.type !== correctType) {
             x.type = correctType;
             rememberType(lookupId, correctType, x.title);
@@ -169,20 +172,19 @@ export default function LibraryPage() {
     healStoredTitles().then(() => {
         const healedItems = loadLib();
         setItems(healedItems);
+        if (user) pushData();
     });
 
     /* Re-probe unclassified titles AND titles suspiciously marked as manga */
-    const hasHealedV2 = localStorage.getItem("yomi.healed_v2");
-    
     const missing = initial.filter((i) => {
       const raw = (i.type || "").trim().toLowerCase();
-      // If V2 heal hasn't run, re-probe EVERYTHING to fix any Vagabond/Manhwa misclassifications.
-      // Otherwise, only probe missing or suspicious "manga" tags.
-      if (!hasHealedV2) return !!i.title;
-      return (!raw || raw === "manga") && i.title;
+      const km = detectKnownManga(i.title);
+      const kw = detectKnownWebtoon(i.title);
+      const h = detectTypeFromHeuristics(i.title);
+      if (km || kw || h) return false;
+      return (!raw || raw === "manga") && !!i.title;
     });
 
-    if (!hasHealedV2) localStorage.setItem("yomi.healed_v2", "true");
     if (!missing.length) return;
 
     let cancelled = false;
@@ -192,6 +194,20 @@ export default function LibraryPage() {
         const t = await detectTypeFromTitle(i.title);
         if (t && t !== i.type) {
           rememberType(i.id, t, i.title);
+          for (const storeKey of ["yomi.lib", "yomi.continue"]) {
+            try {
+              const arr = JSON.parse(localStorage.getItem(storeKey) || "[]");
+              let updated = false;
+              for (const entry of arr) {
+                const targetId = storeKey === "yomi.continue" && entry.mangaId ? entry.mangaId : entry.id;
+                if (targetId === i.id || entry.id === i.id || (entry.title && entry.title === i.title)) {
+                  entry.type = t;
+                  updated = true;
+                }
+              }
+              if (updated) localStorage.setItem(storeKey, JSON.stringify(arr));
+            } catch {}
+          }
           setItems((prev) =>
             prev.map((it) => (it.id === i.id ? { ...it, type: t } : it))
           );
@@ -217,6 +233,9 @@ export default function LibraryPage() {
     if (km) return "manga";
     const kw = detectKnownWebtoon(i.title);
     if (kw) return "manhwa";
+    const h = detectTypeFromHeuristics(i.title);
+    if (h === "manhwa" || h === "manhua") return "manhwa";
+    if (h === "manga") return "manga";
 
     const t = (i.type || "").toLowerCase();
     if (t === "manga") return "manga";

@@ -110,7 +110,15 @@ export function normalizeKey(s: string): string {
 
 export function rememberType(id: string | null | undefined, type?: string | null, title?: string | null) {
   if (!id || !type) return;
-  const t = String(type).toLowerCase();
+  let t = String(type).toLowerCase();
+  if (title) {
+    const km = detectKnownManga(title);
+    const kw = detectKnownWebtoon(title);
+    const h = detectTypeFromHeuristics(title);
+    if (km) t = "manga";
+    else if (kw) t = kw;
+    else if (h) t = h;
+  }
   const keys = [id];
   if (title) {
     const tk = "t:" + normalizeKey(title);
@@ -225,12 +233,418 @@ export function rememberTypes(
   if (dirty) persistTypeStore();
 }
 
+/** Returns true if `s` contains any Hangul (Korean) syllable or Jamo. */
+export function hasKoreanChars(s: string): boolean {
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    if ((c >= 0xac00 && c <= 0xd7af) || (c >= 0x1100 && c <= 0x11ff)) return true;
+  }
+  return false;
+}
+
+/** Returns true if string contains Hiragana (U+3040–U+309F) or Katakana (U+30A0–U+30FF). */
+export function hasJapaneseChars(s: string): boolean {
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    if ((c >= 0x3040 && c <= 0x309f) || (c >= 0x30a0 && c <= 0x30ff)) return true;
+  }
+  return false;
+}
+
+/* Strips separators, store tags, and bracketed noise before comparing aliases */
+export function webtoonAliasKey(s: string): string {
+  return extractString(s)
+    .toLowerCase()
+    .replace(/\[[^\]]*\]|\([^)]*\)/g, " ")
+    .replace(
+      /\b(official|digital|raw|scan|scans|unscanned|complete|full|webtoon|manhwa|manhua|manga|comic|comics|version|ed|remastered|color|colored)\b/g,
+      " "
+    )
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+export const KNOWN_WEBTOONS: Record<string, "manhwa" | "manhua"> = {
+  // Top Manhwa & Webtoons
+  sololeveling: "manhwa",
+  sololevelingragnarok: "manhwa",
+  lookism: "manhwa",
+  omniscientreader: "manhwa",
+  omniscientreadersviewpoint: "manhwa",
+  towerofgod: "manhwa",
+  godofhighschool: "manhwa",
+  highschoolgod: "manhwa",
+  beginningaftertheend: "manhwa",
+  tbate: "manhwa",
+  nanomachine: "manhwa",
+  windbreaker: "manhwa",
+  boxer: "manhwa",
+  theboxer: "manhwa",
+  returnofthemounthuasect: "manhwa",
+  returnoftheblossomingblade: "manhwa",
+  mounthuasect: "manhwa",
+  blossomingblade: "manhwa",
+  greatestestatedeveloper: "manhwa",
+  thegreatestestatedeveloper: "manhwa",
+  overgeared: "manhwa",
+  eleceed: "manhwa",
+  mercenaryenrollment: "manhwa",
+  teenagemercenary: "manhwa",
+  noblesse: "manhwa",
+  sssclasssuicidehunter: "manhwa",
+  sssclassrevivalhunter: "manhwa",
+  legendofthenorthernblade: "manhwa",
+  northernblade: "manhwa",
+  reaperofthedriftingmoon: "manhwa",
+  damnreincarnation: "manhwa",
+  pickmeup: "manhwa",
+  pickmeupinfinitegacha: "manhwa",
+  playerwhoreturned10000yearslater: "manhwa",
+  returnofthemaddemon: "manhwa",
+  returnofthedisasterclasshero: "manhwa",
+  thenovelsextra: "manhwa",
+  doombreaker: "manhwa",
+  reincarnationofthesuicidalbattlegod: "manhwa",
+  murimlogin: "manhwa",
+  murimrpgsimulation: "manhwa",
+  poisondragon: "manhwa",
+  poisondragonlegendoftheasura: "manhwa",
+  wanderingwarriorofwudang: "manhwa",
+  infinitelevelupinmurim: "manhwa",
+  secondliferanker: "manhwa",
+  rankerwholivesasecondtime: "manhwa",
+  levelingwiththegods: "manhwa",
+  survivalstoryofaswordkinginafantasyworld: "manhwa",
+  survivalstoryofaswordking: "manhwa",
+  latnasaga: "manhwa",
+  swordmastersyoungestson: "manhwa",
+  reincarnationoftheveteransoldier: "manhwa",
+  herokiller: "manhwa",
+  studygroup: "manhwa",
+  questism: "manhwa",
+  questsupremacy: "manhwa",
+  realityquest: "manhwa",
+  irlquest: "manhwa",
+  juvenileoffender: "manhwa",
+  managerkim: "manhwa",
+  howtofight: "manhwa",
+  viralhit: "manhwa",
+  unholyblood: "manhwa",
+  whiteblood: "manhwa",
+  sweethome: "manhwa",
+  shotgunboy: "manhwa",
+  bastard: "manhwa",
+  unordinary: "manhwa",
+  junglejuice: "manhwa",
+  designatedbully: "manhwa",
+  thebullyincharge: "manhwa",
+  bullyincharge: "manhwa",
+  getschooled: "manhwa",
+  trueeducation: "manhwa",
+  deathsgame: "manhwa",
+  iwilldiesoon: "manhwa",
+  pigpen: "manhwa",
+  villaintokill: "manhwa",
+  thechallenger: "manhwa",
+  doctorsrebirth: "manhwa",
+  volcanicage: "manhwa",
+  peerlessdad: "manhwa",
+  redstorm: "manhwa",
+  chroniclesofheavenlydemon: "manhwa",
+  bowbladespirit: "manhwa",
+  memorize: "manhwa",
+  thesecondcomingofgluttony: "manhwa",
+  tombraiderking: "manhwa",
+  dungeonreset: "manhwa",
+  killthehero: "manhwa",
+  rankersreturn: "manhwa",
+  theplayerthatcantlevelup: "manhwa",
+  standardofreincarnation: "manhwa",
+  revengeoftheironbloodedswordhound: "manhwa",
+  ironbloodedswordhound: "manhwa",
+  swordhound: "manhwa",
+  levelingupwiththegods: "manhwa",
+  barbarianquest: "manhwa",
+  wornandtornnewbie: "manhwa",
+  tyrantofthetowerdefensegame: "manhwa",
+  ikilledanacademyplayer: "manhwa",
+  demonicevolution: "manhwa",
+  thedarkmagiciantransmigratesafter66666years: "manhwa",
+  theconstellationthatreturnedfromhell: "manhwa",
+  theheavenlydemoncantliveanormallife: "manhwa",
+  heavenlydemoncantliveanormallife: "manhwa",
+  absoluteswordsense: "manhwa",
+  championspathtomurim: "manhwa",
+  areturnersmagicshouldbespecial: "manhwa",
+  returnofthe8thclassmagician: "manhwa",
+  returnofthelegendaryspearknight: "manhwa",
+  skeletonsoldiercouldntprotectthedungeon: "manhwa",
+  skeletonsoldier: "manhwa",
+  pastlifereturner: "manhwa",
+  thesclassesthatiraised: "manhwa",
+  traineepatissier: "manhwa",
+  playerfromtodayonwards: "manhwa",
+  maxlevelnewbie: "manhwa",
+  solomaxlevelnewbie: "manhwa",
+  levelingupalone: "manhwa",
+  ialonelevelup: "manhwa",
+  thelonenecromancer: "manhwa",
+  lonenecromancer: "manhwa",
+  seoulstationnecromancer: "manhwa",
+  seoulstationdruid: "manhwa",
+  catastrophicnecromancer: "manhwa",
+  iamthesorcererking: "manhwa",
+  autohuntingwithmyclones: "manhwa",
+  themaxlevelherohasreturned: "manhwa",
+  maxlevelherohasreturned: "manhwa",
+  trashofthecountsfamily: "manhwa",
+  loutofcountsfamily: "manhwa",
+  iobtainedamythicitem: "manhwa",
+  infinitemage: "manhwa",
+  theknightkingwhoreturnedwithagod: "manhwa",
+  knightkingwhoreturnedwithagod: "manhwa",
+  regressorinstructionmanual: "manhwa",
+  worthlessregression: "manhwa",
+  reincarnatedasthecrazyheir: "manhwa",
+  heavenlydemoncultivationsimulation: "manhwa",
+  heavenlygrandarchivesyoungmaster: "manhwa",
+  boundlessnecromancer: "manhwa",
+  ordeal: "manhwa",
+  nanochess: "manhwa",
+  manhwaacademy: "manhwa",
+
+  // Popular Manhua
+  magicemperor: "manhua",
+  martialpeak: "manhua",
+  talesofdemonsandgods: "manhua",
+  apotheosis: "manhua",
+  battlethroughtheheavens: "manhua",
+  soulland: "manhua",
+  soulland2: "manhua",
+  soulland3: "manhua",
+  versatilemage: "manhua",
+  martialgodasura: "manhua",
+  reverendinsanity: "manhua",
+  masterofgu: "manhua",
+  demonicemperor: "manhua",
+  againstthegods: "manhua",
+  martialuniverse: "manhua",
+  peerlessbattlespirit: "manhua",
+  yuanzun: "manhua",
+  logging10000yearsintothefuture: "manhua",
+  onmyoji: "manhua",
+};
+
+export function detectKnownWebtoon(title: string): "manhwa" | "manhua" | "" {
+  const key = webtoonAliasKey(extractString(title));
+  if (!key) return "";
+  const direct = KNOWN_WEBTOONS[key];
+  if (direct) return direct;
+  const stripped = key.replace(/^(the|a|an)/, "");
+  return (stripped && KNOWN_WEBTOONS[stripped]) || "";
+}
+
+export const KNOWN_MANGA: Record<string, "manga"> = {
+  onepiece: "manga",
+  bleach: "manga",
+  blackclover: "manga",
+  naruto: "manga",
+  dragonball: "manga",
+  dragonballz: "manga",
+  dragonballsuper: "manga",
+  jujutsukaisen: "manga",
+  jujutsukaisen0: "manga",
+  berserk: "manga",
+  vagabond: "manga",
+  chainsawman: "manga",
+  attackontitan: "manga",
+  shingekinokyojin: "manga",
+  hunterxhunter: "manga",
+  myheroacademia: "manga",
+  bokunoheroacademia: "manga",
+  tokyoghoul: "manga",
+  tokyoghoure: "manga",
+  demonslayer: "manga",
+  kimetsunoyaiba: "manga",
+  vinlandsaga: "manga",
+  jojosbizarreadventure: "manga",
+  jojo: "manga",
+  steelballrun: "manga",
+  jojolion: "manga",
+  thejojolands: "manga",
+  slamdunk: "manga",
+  monster: "manga",
+  "20thcenturyboys": "manga",
+  billybat: "manga",
+  pluto: "manga",
+  gintama: "manga",
+  deathnote: "manga",
+  bakuman: "manga",
+  fairytail: "manga",
+  edenszero: "manga",
+  haikyuu: "manga",
+  bluelock: "manga",
+  kurokonobasket: "manga",
+  kurokosbasketball: "manga",
+  aoashi: "manga",
+  hajimenoippo: "manga",
+  spyxfamily: "manga",
+  spyfamily: "manga",
+  frieren: "manga",
+  sousounofrieren: "manga",
+  frierenbeyondjourneysend: "manga",
+  dandadan: "manga",
+  kingdom: "manga",
+  fullmetalalchemist: "manga",
+  boruto: "manga",
+  borutotwobluevortex: "manga",
+  tokyorevengers: "manga",
+  onepunchman: "manga",
+  mobpsycho100: "manga",
+  drstone: "manga",
+  fireforce: "manga",
+  souleater: "manga",
+  claymore: "manga",
+  gantz: "manga",
+  dgrayman: "manga",
+  inuyasha: "manga",
+  rurounikenshin: "manga",
+  yuyuhakusho: "manga",
+  blackbutler: "manga",
+  kuroshitsuji: "manga",
+  thepromisedneverland: "manga",
+  promisedneverland: "manga",
+  mashle: "manga",
+  undeadunluck: "manga",
+  sakamotodays: "manga",
+  kagurabachi: "manga",
+  akanebanashi: "manga",
+  kaijuno8: "manga",
+  choujinx: "manga",
+  bluebox: "manga",
+  oshinoko: "manga",
+  kaguyasama: "manga",
+  kaguyasamaloveiswar: "manga",
+  hellsparadise: "manga",
+  jigokuraku: "manga",
+  dorohedoro: "manga",
+  daidark: "manga",
+  blueexorcist: "manga",
+  aonoexorcist: "manga",
+  noragami: "manga",
+  bungoustraydogs: "manga",
+  seraphoftheend: "manga",
+  owarinozeraph: "manga",
+  recordofragnarok: "manga",
+  shuumatsunovalkyrie: "manga",
+  goblinslayer: "manga",
+  overlord: "manga",
+  thattimeigotreincarnatedasaslime: "manga",
+  mushokutensei: "manga",
+  rezero: "manga",
+  theeminenceinshadow: "manga",
+  eminenceinshadow: "manga",
+  therisingoftheshieldhero: "manga",
+  shieldhero: "manga",
+  swordartonline: "manga",
+  konosuba: "manga",
+  madeinabyss: "manga",
+  housekinokuni: "manga",
+  landofthelustrous: "manga",
+  goodnightpunpun: "manga",
+  oyasumipunpun: "manga",
+  homunculus: "manga",
+  bladeoftheimmortal: "manga",
+  grandblue: "manga",
+  grandbluedreaming: "manga",
+  goldenkamuy: "manga",
+  assassinationclassroom: "manga",
+  ansatsukyoushitsu: "manga",
+  toriko: "manga",
+  beelzebub: "manga",
+  katekyohitmanreborn: "manga",
+  hitmanreborn: "manga",
+  nisekoi: "manga",
+  rentagirlfriend: "manga",
+  kanojookarishimasu: "manga",
+  thequintessentialquintuplets: "manga",
+  horimiya: "manga",
+  komicantcommunicate: "manga",
+  callofthenight: "manga",
+  donttoymewithmissnagatoro: "manga",
+  mydressupdarling: "manga",
+  sonobisquedoll: "manga",
+  uzakichanwantstohangout: "manga",
+  bocchitherock: "manga",
+  skipandloafer: "manga",
+  thefragrantflowerbloomswithdignity: "manga",
+  witchhatatelier: "manga",
+  deliciousindungeon: "manga",
+  dungeonmeshi: "manga",
+  gachiakuta: "manga",
+  centuria: "manga",
+  ruridragon: "manga",
+  initiald: "manga",
+  mfghost: "manga",
+  prisonschool: "manga",
+};
+
+export function detectKnownManga(title: string): "manga" | "" {
+  const key = webtoonAliasKey(extractString(title));
+  if (!key) return "";
+  const direct = KNOWN_MANGA[key];
+  if (direct) return direct;
+  const stripped = key.replace(/^(the|a|an)/, "");
+  return (stripped && KNOWN_MANGA[stripped]) || "";
+}
+
+/**
+ * Synchronous heuristic classification from title strings.
+ * Detects Hangul (Korean), Kana (Japanese), and key distinguishing patterns.
+ */
+export function detectTypeFromHeuristics(title: string): "manhwa" | "manhua" | "manga" | "" {
+  if (!title) return "";
+  const s = extractString(title).trim();
+  if (!s) return "";
+
+  // 1. Language scripts
+  if (hasKoreanChars(s)) return "manhwa";
+  if (hasJapaneseChars(s)) return "manga";
+
+  const lower = s.toLowerCase();
+
+  // 2. Clear manhwa keywords / tropes
+  if (
+    /\b(manhwa|webtoon)\b/i.test(lower) ||
+    /\b(murim|cultivation|heavenly demon|demonic cult|demon sect)\b/i.test(lower) ||
+    /\b(solo (leveling|max|necromancer|hunter|glitch|farming))\b/i.test(lower) ||
+    /\b(leveling (with|up|alone|in))\b/i.test(lower) ||
+    /\b(return of the (unrivaled|disaster|blossoming|mount|mad|crazy|supreme|legendary|great|king|hero|sect|prince|god|ranker|emperor|8th|iron))\b/i.test(lower) ||
+    /\b(reincarnation of the (suicidal|veteran|strongest|battle|murim|sword))\b/i.test(lower) ||
+    /\b(the player who (returned|can't|cannot|leveled|levels))\b/i.test(lower) ||
+    /\b(sss-class|ss-class|ranker's return|swordmaster's youngest|greatest estate developer|reaper of the drifting moon|legend of the northern blade|mercenary enrollment|teenage mercenary|pick me up,? infinite|omniscient reader|lookism|tower of god|god of high school|wind breaker|nano machine|eleceed|overgeared)\b/i.test(lower)
+  ) {
+    return "manhwa";
+  }
+
+  // 3. Clear manhua keywords / tropes
+  if (
+    /\b(manhua)\b/i.test(lower) ||
+    /\b(martial peak|magic emperor|tales of demons and gods|apotheosis|battle through the heavens|soul land|versatile mage|martial god asura|reverend insanity|demonic emperor|against the gods|yuan zun)\b/i.test(lower)
+  ) {
+    return "manhua";
+  }
+
+  return "";
+}
+
 export function getMangaType(id: string, provider?: string, title?: string | null): string {
   if (title) {
     const km = detectKnownManga(title);
     if (km) return km;
     const kw = detectKnownWebtoon(title);
     if (kw) return kw;
+    const h = detectTypeFromHeuristics(title);
+    if (h) return h;
   }
   const slug = String(id).split("/").pop() || "";
   if (slug) {
@@ -238,44 +652,41 @@ export function getMangaType(id: string, provider?: string, title?: string | nul
     if (kmSlug) return kmSlug;
     const kwSlug = detectKnownWebtoon(slug);
     if (kwSlug) return kwSlug;
+    const hSlug = detectTypeFromHeuristics(slug);
+    if (hSlug) return hSlug;
   }
-  if (typeStore[id]) return typeStore[id];
-  /* ids from different providers for the same series never match, but the
-     title is stable — so we key the registry on the normalized title too and
-     fall back to that whenever the id lookup misses (old continue entries,
-     direct links, refreshes). */
-  if (title) {
-    const tk = "t:" + normalizeKey(title);
-    if (typeStore[tk]) return typeStore[tk];
-  }
-  if (slug && typeStore[slug]) return typeStore[slug];
   if (provider === "jikan") return "manga"; /* Jikan is manga-only */
-  /* weebcentral series slugs occasionally embed the format in the path */
   if (provider === "weebcentral") {
     const low = String(id).toLowerCase();
     if (low.includes("manhwa")) return "manhwa";
     if (low.includes("manhua")) return "manhua";
     if (low.includes("comic")) return "comic";
   }
-  /* Last resort — synchronous title heuristic.
-     Korean-language titles are explicitly manhwa. Everything else is left unclassified ("")
-     so that the async MangaDex probes and reader visual probes can actually kick in 
-     and correctly resolve the type. */
-  if (title && hasKoreanChars(String(title))) return "manhwa";
-  return "";
-}
 
-/** Returns true if `s` contains any Hangul (Korean) syllable or Jamo.
- *  Hangul lives in U+AC00–U+D7AF (syllables) and U+1100–U+11FF (Jamo);
- *  CJK ideographs (U+4E00–U+9FFF) used by Japanese/Chinese titles are
- *  intentionally NOT matched, so a Japanese manga title doesn't get
- *  misclassified as manhwa. */
-function hasKoreanChars(s: string): boolean {
-  for (let i = 0; i < s.length; i++) {
-    const c = s.charCodeAt(i);
-    if ((c >= 0xAC00 && c <= 0xD7AF) || (c >= 0x1100 && c <= 0x11FF)) return true;
+  // Type registry check
+  if (typeStore[id]) {
+    const stored = typeStore[id];
+    // If stored as manga, make sure title heuristics don't contradict it
+    if (title && stored === "manga") {
+      const h = detectTypeFromHeuristics(title);
+      if (h && h !== "manga") return h;
+    }
+    return stored;
   }
-  return false;
+  if (title) {
+    const tk = "t:" + normalizeKey(title);
+    if (typeStore[tk]) {
+      const stored = typeStore[tk];
+      if (stored === "manga") {
+        const h = detectTypeFromHeuristics(title);
+        if (h && h !== "manga") return h;
+      }
+      return stored;
+    }
+  }
+  if (slug && typeStore[slug]) return typeStore[slug];
+
+  return "";
 }
 
 /* Reading mode matched from a manga's type. Manhwa reads better as a scroll;
@@ -852,123 +1263,7 @@ export function detectTypeFromGeometry(w: number, h: number): "manhwa" | "" {
   return h / w >= 2.4 ? "manhwa" : "";
 }
 
-/* Popular webtoons whose format the providers actively get wrong. These uploads
-   are labelled by page shape rather than by origin, so WeebCentral's own series
-   path reports "manga" for Korean series that are plainly webtoons — and the GoHS
-   mirror ships near-square pages, so artwork cannot arbitrate either. A small
-   curated map is the honest fix for a handful of well-known titles: these are
-   settled facts, not guesses. Checking it is synchronous, so the reader picks the
-   right mode on first paint instead of depending on a third-party API's ranking,
-   its availability, or a round-trip that can fail. */
-const KNOWN_WEBTOONS: Record<string, "manhwa" | "manhua"> = {
-  godofhighschool: "manhwa",
-  highschoolgod: "manhwa",
-  sololeveling: "manhwa",
-  lookism: "manhwa",
-  eleceed: "manhwa",
-  overgeared: "manhwa",
-  towerofgod: "manhwa",
-  onmyoji: "manhua",
-  beginningaftertheend: "manhwa",
-  nanochess: "manhwa",
-  murimlogin: "manhwa",
-  noblesse: "manhwa",
-  manhwaacademy: "manhwa",
-  /* MangaDex lists this one with originalLanguage "en" and an empty altTitles
-     array (a scrape-only record, no origin recorded), so neither the catalogue
-     nor the artwork can arbitrate it. It is Korean — published by YC, listed
-     under Action/Webtoons — so the settled answer belongs with the rest. */
-  ordeal: "manhwa",
-};
 
-/* Strips the query's separators before comparing, so "Solo Leveling",
-   "SOLO LEVELING" and "Solo-Leveling" all collapse onto one key. Bracketed
-   qualifiers and store labels go too: providers append them freely, and
-   "God of High School [Official]" is the same series as the bare title. */
-function webtoonAliasKey(s: string): string {
-  return extractString(s)
-    .toLowerCase()
-    .replace(/\[[^\]]*\]|\([^)]*\)/g, " ")
-    .replace(
-      /\b(official|digital|raw|scan|scans|unscanned|complete|full|webtoon|manhwa|manhua|manga|comic|comics|version|ed)\b/g,
-      " "
-    )
-    .replace(/[^a-z0-9]+/g, "");
-}
-
-/* Known-webtoon lookup, used before any network work. Returns "" when the title
-   is not one we have a settled answer for. */
-export function detectKnownWebtoon(title: string): "manhwa" | "manhua" | "" {
-  const key = webtoonAliasKey(extractString(title));
-  if (!key) return "";
-  const direct = KNOWN_WEBTOONS[key];
-  if (direct) return direct;
-  /* English titles routinely carry a leading article the entry does not, so
-     "The God of High School" has to land on the same answer as the bare title.
-     Only a LEADING article is dropped — "The Beginning After the End" keeps its
-     internal "the" because its own entry is keyed without one either way. */
-  const stripped = key.replace(/^(the|a|an)/, "");
-  return (stripped && KNOWN_WEBTOONS[stripped]) || "";
-}
-
-const KNOWN_MANGA: Record<string, "manga"> = {
-  onepiece: "manga",
-  bleach: "manga",
-  blackclover: "manga",
-  naruto: "manga",
-  dragonball: "manga",
-  dragonballz: "manga",
-  dragonballsuper: "manga",
-  jujutsukaisen: "manga",
-  berserk: "manga",
-  vagabond: "manga",
-  chainsawman: "manga",
-  attackontitan: "manga",
-  shingekinokyojin: "manga",
-  hunterxhunter: "manga",
-  myheroacademia: "manga",
-  bokunoheroacademia: "manga",
-  tokyoghoul: "manga",
-  demonslayer: "manga",
-  kimetsunoyaiba: "manga",
-  vinlandsaga: "manga",
-  jojosbizarreadventure: "manga",
-  jojo: "manga",
-  slamdunk: "manga",
-  monster: "manga",
-  gintama: "manga",
-  deathnote: "manga",
-  fairytail: "manga",
-  haikyuu: "manga",
-  bluelock: "manga",
-  spyxfamily: "manga",
-  frieren: "manga",
-  sousounofrieren: "manga",
-  dandadan: "manga",
-  kingdom: "manga",
-  fullmetalalchemist: "manga",
-  boruto: "manga",
-  tokyorevengers: "manga",
-  onepunchman: "manga",
-  drstone: "manga",
-  fireforce: "manga",
-  souleater: "manga",
-  claymore: "manga",
-  gantz: "manga",
-  dgrayman: "manga",
-  inuyasha: "manga",
-  rurounikenshin: "manga",
-  yuyuhakusho: "manga",
-};
-
-export function detectKnownManga(title: string): "manga" | "" {
-  const key = webtoonAliasKey(extractString(title));
-  if (!key) return "";
-  const direct = KNOWN_MANGA[key];
-  if (direct) return direct;
-  const stripped = key.replace(/^(the|a|an)/, "");
-  return (stripped && KNOWN_MANGA[stripped]) || "";
-}
 
 export const MD_TAGS_MAP: Record<string, string> = {
   thriller: '07251805-a27e-4d59-b488-f0bfbec15168',

@@ -14,6 +14,9 @@ import {
   getProxyUrl,
   getMangaType,
   detectTypeFromTitle,
+  detectKnownManga,
+  detectKnownWebtoon,
+  detectTypeFromHeuristics,
   rememberType,
   rememberTitle,
   looksLikeId,
@@ -127,9 +130,16 @@ function MangaDetailsContent() {
         const backendTitle = extractString(backendManga?.title) || initialTitle || "";
         const fallbackCover = backendManga?.coverUrl || (provider === 'weebcentral' && mangaId ? `https://temp.compsci88.com/cover/normal/${mangaId.split('/')[0]}.webp` : null);
         if (backendTitle && !looksLikeId(backendTitle)) rememberTitle(mangaId, backendTitle);
+        const km = detectKnownManga(backendTitle);
+        const kw = detectKnownWebtoon(backendTitle);
+        const h = detectTypeFromHeuristics(backendTitle);
         const resolvedType =
+          km ||
+          kw ||
+          h ||
+          getMangaType(mangaId, provider, backendTitle) ||
           backendManga?.type ||
-          getMangaType(mangaId, provider, backendTitle);
+          "";
         setManga(
           backendManga
             ? { ...backendManga, title: backendTitle, coverUrl: fallbackCover, type: resolvedType }
@@ -146,6 +156,23 @@ function MangaDetailsContent() {
             if (cancelled || !t) return;
             rememberType(mangaId, t, extractString(backendManga.title));
             setManga((prev) => (prev ? { ...prev, type: t } : prev));
+            // Also heal the library and continue shelves if this title is present
+            for (const storeKey of ["yomi.lib", "yomi.continue"]) {
+              try {
+                const arr = JSON.parse(localStorage.getItem(storeKey) || "[]");
+                let updated = false;
+                for (const item of arr) {
+                  const targetId = storeKey === "yomi.continue" && item.mangaId ? item.mangaId : item.id;
+                  if (targetId === mangaId || item.id === mangaId || item.title === backendTitle) {
+                    if (item.type !== t) {
+                      item.type = t;
+                      updated = true;
+                    }
+                  }
+                }
+                if (updated) localStorage.setItem(storeKey, JSON.stringify(arr));
+              } catch {}
+            }
           });
         }
         setScore(data.manga?.score ?? null);

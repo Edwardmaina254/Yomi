@@ -23,6 +23,7 @@ import {
   gradientStyle,
   glyphFromTitle,
   providerLabel,
+  parseChapterSortKey,
 } from "@/lib/types";
 import {
   ContinueEntry,
@@ -180,7 +181,7 @@ function MangaDetailsContent() {
 
         const sorted = (data.chapters || []).sort(
           (a: Chapter, b: Chapter) =>
-            parseFloat(b.chapterNumber || "0") - parseFloat(a.chapterNumber || "0")
+            parseChapterSortKey(b.chapterNumber) - parseChapterSortKey(a.chapterNumber)
         );
         setChapters(sorted);
       } catch (error) {
@@ -313,9 +314,14 @@ function MangaDetailsContent() {
   const sortedChapters = useMemo(() => {
     if (!chapters.length) return [];
     return sortOrder === "asc"
-      ? [...chapters].sort((a, b) => parseFloat(a.chapterNumber || "0") - parseFloat(b.chapterNumber || "0"))
+      ? [...chapters].sort((a, b) => parseChapterSortKey(a.chapterNumber) - parseChapterSortKey(b.chapterNumber))
       : chapters;
   }, [chapters, sortOrder]);
+
+  const latestChapterNum = useMemo(() => {
+    if (!chapters.length) return null;
+    return chapters[0]?.chapterNumber || null;
+  }, [chapters]);
 
   const handleSimilar = async () => {
     setSimilarOpen(!similarOpen);
@@ -407,6 +413,7 @@ function MangaDetailsContent() {
               <div style={{ minWidth: 0 }}>
                 <div className="eyebrow" style={{ color: "color-mix(in oklch, var(--fg) 60%, transparent)" }}>
                   {providerLabel(provider)} · {chapters.length} chapter{chapters.length === 1 ? "" : "s"}
+                  {latestChapterNum && latestChapterNum !== String(chapters.length) ? ` (Up to #${latestChapterNum})` : ""}
                 </div>
                 <h1 style={{ marginTop: 6 }}>{title}</h1>
 
@@ -415,7 +422,14 @@ function MangaDetailsContent() {
                     <span className="ds"><b>★ {score.toFixed(1)}</b></span>
                   )}
                   {chapters.length > 0 && (
-                    <span className="ds"><b>{chapters.length}</b> ch</span>
+                    <span className="ds">
+                      <b>{chapters.length}</b> ch
+                      {latestChapterNum && latestChapterNum !== String(chapters.length) && (
+                        <span style={{ opacity: 0.75, fontWeight: 400, marginLeft: 4 }}>
+                          (Up to #{latestChapterNum})
+                        </span>
+                      )}
+                    </span>
                   )}
                   {status && (
                     <span className="ds"><b>{status}</b></span>
@@ -483,6 +497,7 @@ function MangaDetailsContent() {
                     Chapters{" "}
                     <span className="yomi-mono" style={{ color: "var(--muted)", fontSize: 12 }}>
                       {chapters.length}
+                      {latestChapterNum && latestChapterNum !== String(chapters.length) ? ` (Up to #${latestChapterNum})` : ""}
                     </span>
                   </h2>
                   <button

@@ -285,8 +285,10 @@ function SearchPageContent() {
             <div className="yomi-brand">
               <span className="mark">読</span>
               <div className="yomi-brand-text">
-                <span className="name">YOMI</span>
-                <small>READ INTO THE NIGHT</small>
+                <span className="name">
+                  YOMI
+                  <small>READ INTO THE NIGHT</small>
+                </span>
               </div>
             </div>
             <div className="yomi-topbar-actions">

@@ -81,6 +81,22 @@ export function findChapterById(
   return undefined;
 }
 
+/** Parses a chapter number or label into a comparable sort key, handling seasons (S3-235) and parts (P2-10). */
+export function parseChapterSortKey(numStr: string | undefined | null): number {
+  if (!numStr) return 0;
+  const s = String(numStr).trim();
+  const sMatch = s.match(/^S(\d+)[-.](\d+(?:\.\d+)?)$/i);
+  if (sMatch) {
+    return parseInt(sMatch[1], 10) * 1000000 + parseFloat(sMatch[2]);
+  }
+  const pMatch = s.match(/^P(\d+)[-.](\d+(?:\.\d+)?)$/i);
+  if (pMatch) {
+    return parseInt(pMatch[1], 10) * 100000 + parseFloat(pMatch[2]);
+  }
+  const n = parseFloat(s);
+  return Number.isNaN(n) ? 0 : n;
+}
+
 /* Type registry (id -> manga/manhwa/manhua/comic). Home/search know the type
    of each title they return; the detail page and reader don't get it from the
    chapters endpoint, so we stash the mapping here as results pass through.

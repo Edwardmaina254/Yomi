@@ -36,6 +36,13 @@ export interface WeebCentralChapter {
     provider: string;
 }
 
+function isCloudflareChallenge(status: number, text: string): boolean {
+    if (status === 403 || status === 503) return true;
+    if (!text || text.length < 20) return false;
+    const lower = text.toLowerCase();
+    return lower.includes('just a moment') || lower.includes('cf-mitigated') || lower.includes('challenges.cloudflare.com') || lower.includes('cf-turnstile');
+}
+
 export class WeebCentralService {
     private page: any = null;
     private initPromise: Promise<void> | null = null;
@@ -161,7 +168,7 @@ export class WeebCentralService {
         const cleanQ = q.replace(/[^a-zA-Z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
         const searchUrl = (term: string) => `https://weebcentral.com/search/data?text=${encodeURIComponent(term)}&limit=32&offset=0&display_mode=Full+Display`;
 
-        const fetchTerm = async (term: string): Promise<WeebCentralSearchResult[]> => {
+        const fetchTerm = async (term: string): Promise<{ blocked: boolean; results: WeebCentralSearchResult[] }> => {
             const url = searchUrl(term);
             const headers: Record<string, string> = {
                 'HX-Request': 'true',
@@ -172,35 +179,36 @@ export class WeebCentralService {
             // 1. Try fast direct Node fetch
             try {
                 const directRes = await fetch(url, { headers });
-                if (directRes.ok) {
-                    const text = await directRes.text();
-                    const results = this.parseSearchResults(text);
-                    if (results.length > 0) return results;
+                const text = await directRes.text();
+                if (directRes.ok && !isCloudflareChallenge(directRes.status, text)) {
+                    return { blocked: false, results: this.parseSearchResults(text) };
                 }
             } catch {}
 
-            // 2. Direct fetch blocked (Cloudflare 403) -> route through Stealth Puppeteer
+            // 2. Direct fetch blocked (Cloudflare 403 or challenge) -> route through Stealth Puppeteer
             try {
                 const stealthRes = await this.evaluateFetch(url, headers);
-                if (stealthRes.status === 200) {
-                    return this.parseSearchResults(stealthRes.text);
+                if (stealthRes.status === 200 && !isCloudflareChallenge(stealthRes.status, stealthRes.text)) {
+                    return { blocked: false, results: this.parseSearchResults(stealthRes.text) };
                 }
             } catch (err: any) {
                 console.error('[WeebCentral] Stealth search error:', err.message);
             }
 
-            return [];
+            return { blocked: true, results: [] };
         };
 
-        let results = await fetchTerm(cleanQ);
-        if (results.length === 0 && cleanQ !== q) {
-            results = await fetchTerm(q);
+        let { blocked, results } = await fetchTerm(cleanQ);
+        if (results.length === 0 && cleanQ !== q && !blocked) {
+            const res2 = await fetchTerm(q);
+            results = res2.results;
         }
-        if (results.length === 0) {
+        if (results.length === 0 && !blocked) {
             const words = cleanQ.split(' ').filter(w => w.length > 2);
             if (words.length > 1) {
                 const shortQ = words.slice(0, 2).join(' ');
-                results = await fetchTerm(shortQ);
+                const res3 = await fetchTerm(shortQ);
+                results = res3.results;
             }
         }
         return { results };
@@ -284,17 +292,16 @@ export class WeebCentralService {
         // 1. Direct Node fetch
         try {
             const directRes = await fetch(url, { headers });
-            if (directRes.ok) {
-                const text = await directRes.text();
-                const items = parseCatalogItems(text);
-                if (items.length > 0) return items;
+            const text = await directRes.text();
+            if (directRes.ok && !isCloudflareChallenge(directRes.status, text)) {
+                return parseCatalogItems(text);
             }
         } catch {}
 
         // 2. Direct fetch blocked -> Stealth Puppeteer
         try {
             const stealthRes = await this.evaluateFetch(url, headers);
-            if (stealthRes.status === 200) {
+            if (stealthRes.status === 200 && !isCloudflareChallenge(stealthRes.status, stealthRes.text)) {
                 return parseCatalogItems(stealthRes.text);
             }
         } catch (err: any) {
@@ -323,14 +330,32 @@ export class WeebCentralService {
         };
 
         const extractChapterNumber = (str: string): string => {
-            const clean = str.replace(/Chapter\s*/i, '').trim();
-            const numMatch = clean.match(/(\d+(?:\.\d+)?)\s*$/) || clean.match(/(\d+(?:\.\d+)?)/);
-            return numMatch ? numMatch[1] : clean;
+            const sMatch = str.match(/S(?:eason)?\s*(\d+)\s*[-:]\s*(?:Episode|Ep|Chapter|Ch)?\.?\s*([\d.]+)/i);
+            if (sMatch) {
+                return `S${sMatch[1]}-${sMatch[2]}`;
+            }
+            const partMatch = str.match(/Part\s*(\d+)\s*[-:]\s*(?:Episode|Ep|Chapter|Ch)?\.?\s*([\d.]+)/i);
+            if (partMatch) {
+                return `P${partMatch[1]}-${partMatch[2]}`;
+            }
+            const chMatch = str.match(/(?:Chapter|Ch|Episode|Ep|Punch|Act|Round|Lesson|Stage)\.?\s*([\d.]+)/i);
+            if (chMatch) {
+                return chMatch[1];
+            }
+            const numEndMatch = str.match(/(?:^|\s|#)([\d]+(?:\.[\d]+)?)\s*$/);
+            if (numEndMatch) {
+                return numEndMatch[1];
+            }
+            const anyNumMatch = str.match(/([\d]+(?:\.[\d]+)?)/);
+            if (anyNumMatch) {
+                return anyNumMatch[1];
+            }
+            return str.trim();
         };
 
         const parseChapters = (html: string): WeebCentralChapter[] => {
             const chapters: WeebCentralChapter[] = [];
-            const regex = /<a href="\/chapters\/([^"]+)"[^>]*>[\s\S]*?<span class="">(.*?)<\/span>/g;
+            const regex = /<a href="\/chapters\/([^"]+)"[^>]*>[\s\S]*?<span class="">([\s\S]*?)<\/span>[\s\S]*?<time[^>]*datetime="([^"]+)"/g;
             let match;
             while ((match = regex.exec(html)) !== null) {
                 const title = match[2].trim();
@@ -339,7 +364,7 @@ export class WeebCentralService {
                     chapterNumber: extractChapterNumber(title),
                     title,
                     pages: 1,
-                    createdAt: new Date().toISOString(),
+                    createdAt: match[3] || new Date().toISOString(),
                     provider: 'weebcentral'
                 });
             }
@@ -366,6 +391,17 @@ export class WeebCentralService {
                         description = t;
                     }
                 });
+            }
+
+            let note = '';
+            $('strong:contains("Note")').each((_: any, el: any) => {
+                const p = $(el).parent().text().replace(/\s+/g, ' ').trim();
+                if (p && p.length > 5) note = p;
+            });
+            if (note && description) {
+                description = `${description}\n\n[${note}]`;
+            } else if (note) {
+                description = `[${note}]`;
             }
 
             let status = 'Ongoing';
@@ -402,31 +438,43 @@ export class WeebCentralService {
             genres: [] as string[]
         };
 
+        let needStealth = false;
+
         // 1. Try direct fetch in parallel
         try {
             const [chRes, metaRes] = await Promise.all([
                 fetch(chapterListUrl, { headers }),
                 fetch(seriesUrl, { headers })
             ]);
-            if (chRes.ok) {
-                chapters = parseChapters(await chRes.text());
-            }
-            if (metaRes.ok) {
-                meta = parseSeriesMeta(await metaRes.text());
-            }
-        } catch {}
+            const chText = await chRes.text();
+            const metaText = await metaRes.text();
 
-        // 2. Direct fetch blocked -> Stealth Puppeteer in parallel
-        if (chapters.length === 0) {
+            if (chRes.ok && !isCloudflareChallenge(chRes.status, chText)) {
+                chapters = parseChapters(chText);
+            } else {
+                needStealth = true;
+            }
+
+            if (metaRes.ok && !isCloudflareChallenge(metaRes.status, metaText)) {
+                meta = parseSeriesMeta(metaText);
+            } else {
+                needStealth = true;
+            }
+        } catch {
+            needStealth = true;
+        }
+
+        // 2. Only if direct fetch was blocked by Cloudflare -> Stealth Puppeteer in parallel
+        if (needStealth) {
             try {
                 const [chStealth, metaStealth] = await Promise.all([
                     this.evaluateFetch(chapterListUrl, headers),
                     this.evaluateFetch(seriesUrl, headers)
                 ]);
-                if (chStealth.status === 200) {
+                if (chStealth.status === 200 && !isCloudflareChallenge(chStealth.status, chStealth.text)) {
                     chapters = parseChapters(chStealth.text);
                 }
-                if (metaStealth.status === 200) {
+                if (metaStealth.status === 200 && !isCloudflareChallenge(metaStealth.status, metaStealth.text)) {
                     meta = parseSeriesMeta(metaStealth.text);
                 }
             } catch (err: any) {

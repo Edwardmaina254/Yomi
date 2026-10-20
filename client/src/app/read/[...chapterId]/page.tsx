@@ -5,7 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { unmarkDeleted } from "@/lib/continue";
-import { API_URL, getProxyUrl, getMangaType, getMangaTitle, extractString, looksLikeId, modeForType, detectTypeFromTitle, detectTypeFromGeometry, detectKnownWebtoon, rememberType, rememberTitle, findChapterById, getModeOverride, rememberModeOverride, clearModeOverride, type Chapter } from "@/lib/types";
+import { API_URL, getProxyUrl, getMangaType, getMangaTitle, extractString, looksLikeId, modeForType, detectTypeFromTitle, detectTypeFromGeometry, detectKnownWebtoon, rememberType, rememberTitle, findChapterById, getModeOverride, rememberModeOverride, clearModeOverride, parseChapterSortKey, type Chapter } from "@/lib/types";
 import { navReplace } from "@/lib/navHistory";
 import { useNav } from "@/contexts/NavContext";
 import gsap from "gsap";
@@ -586,7 +586,7 @@ function ReaderContent() {
           .slice()
           .sort(
             (a: Chapter, b: Chapter) =>
-              parseFloat(b.chapterNumber || "0") - parseFloat(a.chapterNumber || "0")
+              parseChapterSortKey(b.chapterNumber) - parseChapterSortKey(a.chapterNumber)
           );
         setChapters(sorted);
       } catch {}

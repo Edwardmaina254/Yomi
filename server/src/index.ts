@@ -437,6 +437,7 @@ app.get('/api/trending', async (req, res) => {
     const timeframe = req.query.timeframe as string || 'month';
     const cacheKey = `trending-${type}-${timeframe}`;
     if (cache.has(cacheKey) && !req.query.nocache) {
+        res.setHeader('Cache-Control', 'public, max-age=120, stale-while-revalidate=600');
         return res.json(cache.get(cacheKey));
     }
 
@@ -464,6 +465,7 @@ app.get('/api/trending', async (req, res) => {
         if (wcResults && wcResults.length > 0) {
             const payload = { results: wcResults.slice(0, 30) };
             cache.set(cacheKey, payload);
+            res.setHeader('Cache-Control', 'public, max-age=120, stale-while-revalidate=600');
             return res.json(payload);
         }
     } catch (e: any) {
@@ -495,6 +497,7 @@ app.get('/api/trending', async (req, res) => {
         
         const payload = { results: results.slice(0, 30) };
         cache.set(cacheKey, payload);
+        res.setHeader('Cache-Control', 'public, max-age=120, stale-while-revalidate=600');
         res.json(payload);
     } catch (e: any) {
         console.error('Trending error:', e.message);
@@ -507,6 +510,7 @@ app.get('/api/latest', async (req, res) => {
     const type = req.query.type as string || 'manga';
     const cacheKey = `latest-${type}`;
     if (cache.has(cacheKey) && !req.query.nocache) {
+        res.setHeader('Cache-Control', 'public, max-age=120, stale-while-revalidate=600');
         return res.json(cache.get(cacheKey));
     }
 
@@ -527,6 +531,7 @@ app.get('/api/latest', async (req, res) => {
         if (wcResults && wcResults.length > 0) {
             const payload = { results: wcResults.slice(0, 30) };
             cache.set(cacheKey, payload);
+            res.setHeader('Cache-Control', 'public, max-age=120, stale-while-revalidate=600');
             return res.json(payload);
         }
     } catch (e: any) {
@@ -544,6 +549,7 @@ app.get('/api/latest', async (req, res) => {
         
         const payload = { results: results.slice(0, 30) };
         cache.set(cacheKey, payload);
+        res.setHeader('Cache-Control', 'public, max-age=120, stale-while-revalidate=600');
         res.json(payload);
     } catch (e: any) {
         console.error('Latest error:', e.message);
@@ -600,6 +606,7 @@ app.get('/api/search', async (req, res) => {
     const cleanQ = (q as string).toLowerCase().trim();
     const cacheKey = `search-${cleanQ}`;
     if (cache.has(cacheKey) && !req.query.nocache) {
+        res.setHeader('Cache-Control', 'public, max-age=120, stale-while-revalidate=600');
         return res.json(cache.get(cacheKey));
     }
 
@@ -738,6 +745,7 @@ app.get('/api/search', async (req, res) => {
 
         const payload = { results: finalResults };
         cache.set(cacheKey, payload);
+        res.setHeader('Cache-Control', 'public, max-age=120, stale-while-revalidate=600');
         res.json(payload);
     } catch (error: any) {
         console.error('Search fetch error:', error.message);
@@ -869,11 +877,14 @@ const mapChapters = (data: any, resolvedProvider: string) => {
                     }
                 }
             }
-            // Normalize chapter numbers: strip leading dots and zeros (.023 → 23, 001 → 1)
+            // Normalize chapter numbers: strip leading dots and zeros (.023 → 0.023, 001 → 1) but preserve Season & Part prefixes
             if (chapNum && typeof chapNum === 'string') {
-                if (!chapNum.startsWith('S')) {
+                if (!chapNum.startsWith('S') && !chapNum.startsWith('P')) {
                     chapNum = chapNum.replace(/^\./, ''); // strip leading dot
-                    chapNum = String(parseFloat(chapNum) || 0); // normalize 023 → 23
+                    const parsed = parseFloat(chapNum);
+                    if (!isNaN(parsed)) {
+                        chapNum = String(parsed); // normalize 023 → 23
+                    }
                 }
             }
             const displayTitle = chapter.title
@@ -884,18 +895,28 @@ const mapChapters = (data: any, resolvedProvider: string) => {
                 chapterNumber: chapNum || '0',
                 title: displayTitle,
                 pages: chapter.pages || 0,
-                createdAt: chapter.releaseDate || new Date().toISOString(),
+                createdAt: chapter.releaseDate || chapter.createdAt || new Date().toISOString(),
                 provider: resolvedProvider,
             };
         });
-        // Deduplicate by chapter number — keep only the first occurrence
-        // (providers like ComicK return multiple groups for the same chapter)
-        const seen = new Set<string>();
-        return mapped.filter((ch: any) => {
-            if (seen.has(ch.chapterNumber)) return false;
-            seen.add(ch.chapterNumber);
-            return true;
-        });
+        // Deduplicate:
+        // For ComicK: ComicK returns multiple scanlation groups for the same chapter number
+        // For WeebCentral, MangaDex, MangaFire, MangaPill: keep authentic chapters deduplicated by chapter ID
+        if (resolvedProvider === 'comick') {
+            const seenNum = new Set<string>();
+            return mapped.filter((ch: any) => {
+                if (seenNum.has(ch.chapterNumber)) return false;
+                seenNum.add(ch.chapterNumber);
+                return true;
+            });
+        } else {
+            const seenId = new Set<string>();
+            return mapped.filter((ch: any) => {
+                if (seenId.has(ch.id)) return false;
+                seenId.add(ch.id);
+                return true;
+            });
+        }
     })()
     };
 };
@@ -908,6 +929,7 @@ app.get(/^\/api\/manga\/(.+)\/chapters$/, async (req, res) => {
 
     const cacheKey = `chapters-${providerName}-${decodedId}`;
     if (cache.has(cacheKey)) {
+        res.setHeader('Cache-Control', 'public, max-age=120, stale-while-revalidate=600');
         return res.json(cache.get(cacheKey));
     }
 
@@ -1165,6 +1187,7 @@ app.get(/^\/api\/manga\/(.+)\/chapters$/, async (req, res) => {
         if (bestResult.count === 0) {
             const emptyPayload = { manga: { id: decodedId, title: searchTitle, resolvedProvider: providerName }, chapters: [] };
             cache.set(cacheKey, emptyPayload);
+            res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=120');
             return res.json(emptyPayload);
         }
 
@@ -1172,6 +1195,7 @@ app.get(/^\/api\/manga\/(.+)\/chapters$/, async (req, res) => {
 
         const payload = mapChapters(bestResult.data, bestResult.provider);
         cache.set(cacheKey, payload);
+        res.setHeader('Cache-Control', 'public, max-age=120, stale-while-revalidate=600');
         return res.json(payload);
     } catch (error: any) {
         console.error('Chapter fetch error:', error.stack);

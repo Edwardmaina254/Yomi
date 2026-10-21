@@ -1326,7 +1326,10 @@ function ReaderContent() {
     try {
       (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     } catch {}
-    showChrome();
+    /* Deliberately no showChrome() here: a page turn is not a request for the
+       bars. Vertical mode dismisses its chrome as soon as you scroll, so a
+       flipper tapping through pages must not keep re-summoning the top bar and
+       its hairline on every single turn. Only a middle tap reveals chrome. */
   };
 
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -1387,17 +1390,12 @@ function ReaderContent() {
         const w = rect.width;
         if (x < w * 0.3) turn(-1);
         else if (x > w * 0.7) turn(1);
-        /* Middle tap is the immersive toggle, not a chrome nudge — it strips the
-           chrome entirely (and brings it back from immersive), which is the
-           behaviour the reader is supposed to have. */
-        else {
-          const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-          const x = e.clientX - rect.left;
-          const w = rect.width;
-          if (x < w * 0.3) turn(-1);
-          else if (x > w * 0.7) turn(1);
-          else toggleImmersive();
-        }
+        /* Middle tap mirrors the vertical-mode tap: it wakes a chrome that the
+           auto-hide timer put away, and only enters immersive when the chrome
+           is already up. Entering immersive from an already-hidden chrome made
+           the bars unreachable without a second tap. */
+        else if (immersiveRef.current || chromeVisible) toggleImmersive();
+        else showChrome();
       } else {
         springBack();
       }
@@ -2004,14 +2002,15 @@ function ReaderContent() {
         </div>
       )}
 
-      {/* Page-flip chapter boundary — the same "always there" chapter step as
-          the scroll-flow panel, surfaced on the first / last page so flippers
-          never have to leave the immersive canvas to change chapters. */}
+      {/* Page-flip chapter boundary — the same chapter step as the scroll-flow
+          panel, surfaced on the first / last page. It rides with the chrome
+          rather than floating forever, so page-flip keeps the clean,
+          chrome-free canvas the scroll reader has. */}
       {mode === "paginated" && (
         <>
           {chapterReady && page <= 1 && hasPrev && (
             <button
-              className="yomi-chapedge prev"
+              className={`yomi-chapedge prev ${chromeShown ? "" : "hidden"}`}
               onClick={() => goChapter(-1)}
               title={`Previous chapter · Ch ${prevCh?.chapterNumber}`}
             >
@@ -2020,7 +2019,7 @@ function ReaderContent() {
           )}
           {chapterReady && page >= total && hasNext && (
             <button
-              className="yomi-chapedge next"
+              className={`yomi-chapedge next ${chromeShown ? "" : "hidden"}`}
               onClick={() => goChapter(1)}
               title={`Next chapter · Ch ${nextCh?.chapterNumber}`}
             >

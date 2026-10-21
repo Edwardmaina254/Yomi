@@ -1358,6 +1358,20 @@ body.yomi-reading { overflow: hidden; }
   padding-top: 0;
   padding-bottom: 0;
 }
+/* Page-flip draws a framed sheet (rounded corners, drop shadow, spine stack).
+   Immersive promises "artwork only", so that frame is stripped too — otherwise
+   a dark border survives around every flipped page while scroll mode is
+   full-bleed. */
+.yomi-reader.immersive .yomi-flip-front,
+.yomi-reader.immersive .yomi-flip-back {
+  border-radius: 0;
+  box-shadow: none;
+}
+.yomi-reader.immersive .yomi-flip-stack {
+  border-radius: 0;
+  background: var(--page-bg);
+  box-shadow: none;
+}
 .yomi-r-top {
   display: flex; align-items: center; gap: 10px;
   padding: calc(10px + var(--sat)) 14px 10px;
@@ -1543,9 +1557,10 @@ body.yomi-reading { overflow: hidden; }
 
 /* ── End-of-chapter navigation ──
    The chapter-boundary call to action. In scroll mode it rides at the tail of
-   .yomi-vpages (below the last panel); in page-flip mode the same step is a
-   fixed pill on the first / last page. Both stay visible regardless of the
-   chrome's auto-hide state, so advancing never needs a reveal tap. */
+   .yomi-vpages (below the last panel). In page-flip mode the same step is a
+   fixed pill on the first / last page; it fades with the chrome (and is gone
+   in immersive) so a permanent row never clings to the artwork — a middle tap
+   brings the bars and the boundary pill back together. */
 .yomi-chapend {
   width: 100%;
   max-width: 760px;
@@ -1642,7 +1657,7 @@ body.yomi-reading { overflow: hidden; }
   backdrop-filter: blur(12px);
   color: var(--fg);
   box-shadow: var(--shadow);
-  transition: transform 0.12s ease, filter 0.12s ease, opacity 0.2s ease;
+  transition: transform 0.12s ease, filter 0.12s ease, opacity 0.2s ease, visibility 0.2s;
 }
 .yomi-chapedge.prev { left: 14px; }
 .yomi-chapedge.next {
@@ -1654,6 +1669,14 @@ body.yomi-reading { overflow: hidden; }
 }
 .yomi-chapedge:hover { transform: translateY(-1px); filter: brightness(1.06); }
 .yomi-chapedge:active { transform: translateY(0); }
+/* Boundary pills are part of the chrome, not permanent furniture: when the
+   bars auto-hide (or immersive strips them) the pill goes with them. */
+.yomi-chapedge.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(8px);
+}
 
 @media (max-width: 560px) {
   .yomi-chapend { padding: 48px 16px calc(36px + var(--sab)); }

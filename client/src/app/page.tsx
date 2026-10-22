@@ -613,6 +613,16 @@ function SpotlightCarousel({ pool }: { pool: MangaResult[] }) {
   );
 }
 
+/* Single source of truth for the live clock: always read from the device
+   clock in the device timezone so the day and greeting can never drift. */
+function readClock(): { dateStr: string; greeting: string } {
+  const d = new Date();
+  return {
+    dateStr: d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }),
+    greeting: getGreeting(d),
+  };
+}
+
 export default function HomePage() {
   const { user, pushData } = useAuth();
   const router = useRouter();
@@ -625,9 +635,11 @@ export default function HomePage() {
   const pool = useRef<MangaResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [now, setNow] = useState(() => new Date());
-  const [greeting, setGreeting] = useState(() => getGreeting());
-  const [clientTime, setClientTime] = useState<{ dateStr: string; greeting: string } | null>(null);
+  /* The homepage is statically prerendered, so a date computed during the
+     server render gets frozen at build time and shows up stale after a
+     refresh. The clock stays null until the client takes over, so the baked
+     HTML never carries a wrong day or greeting. */
+  const [clock, setClock] = useState<{ dateStr: string; greeting: string } | null>(null);
   const lastLoadRef = useRef(Date.now());
   const mainRef = useRef<HTMLDivElement>(null);
   const pullStartRef = useRef<number | null>(null);
@@ -692,49 +704,35 @@ export default function HomePage() {
 
   const refreshHome = useCallback(async () => {
     setRefreshing(true);
-    const d = new Date();
-    setNow(d);
-    const g = getGreeting(d);
-    setGreeting(g);
-    setClientTime({
-      dateStr: d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }),
-      greeting: g,
-    });
+    setClock(readClock());
     setContinueReading(loadContinueReading());
     await load(trendingTimeframe);
     lastLoadRef.current = Date.now();
     setRefreshing(false);
   }, [load, trendingTimeframe]);
 
-  // Live time-sensitive clock: update greeting and date dynamically
+  // Live clock: syncs the greeting and date to the device clock on mount and
+  // keeps them current afterwards, including across midnight.
   useEffect(() => {
-    const tick = () => {
-      const d = new Date();
-      setNow(d);
-      const g = getGreeting(d);
-      setGreeting(g);
-      setClientTime({
-        dateStr: d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }),
-        greeting: g,
-      });
+    const sync = () => setClock(readClock());
+    sync();
+    const timer = setInterval(sync, 30000);
+    const onWake = () => {
+      if (document.visibilityState === "visible") sync();
     };
-    tick(); // Sync immediately on client mount
-    const timer = setInterval(tick, 2000);
-    return () => clearInterval(timer);
+    document.addEventListener("visibilitychange", onWake);
+    window.addEventListener("focus", onWake);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", onWake);
+      window.removeEventListener("focus", onWake);
+    };
   }, []);
 
   // Reactive tab focus & visibility revalidation: refresh data when coming back to app
   useEffect(() => {
     const onVisibility = () => {
       if (document.visibilityState === "visible") {
-        const d = new Date();
-        setNow(d);
-        const g = getGreeting(d);
-        setGreeting(g);
-        setClientTime({
-          dateStr: d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }),
-          greeting: g,
-        });
         if (Date.now() - lastLoadRef.current > 4 * 60 * 1000) {
           refreshHome();
         }
@@ -1018,10 +1016,8 @@ export default function HomePage() {
 
           {/* Greeting & Date */}
           <div className="yomi-greeting">
-            <p className="eyebrow" suppressHydrationWarning>
-              {clientTime ? clientTime.dateStr : now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
-            </p>
-            <h1 suppressHydrationWarning>{(clientTime ? clientTime.greeting : greeting)}.</h1>
+            <p className="eyebrow">{clock ? clock.dateStr : "\u00A0"}</p>
+            <h1>{clock ? `${clock.greeting}.` : "\u00A0"}</h1>
           </div>
 
           <div style={{ height: 16 }} />

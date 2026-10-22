@@ -668,38 +668,61 @@ app.get('/api/search', async (req, res) => {
                     status: manga.status,
                     contentRating: manga.contentRating || (manga.isAdult ? 'adult' : 'safe'),
                     provider: (result.value as any).providerName,
-                    type: detectType(manga)
+                    type: detectType(manga),
+                    altTitles: manga.altTitles || []
                 }));
                 allResults = [...allResults, ...mapped];
             }
         });
 
-        const groups: any[][] = [];
-                const sanitizeTitle = (title: string) => title.toLowerCase().replace(/\(.*?\)/g, '').replace(/\[.*?\]/g, '').replace(/['’]s/g, ' ').replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+        const cleanTitleForDedup = (t: string) => {
+            if (!t) return '';
+            return t
+                .toLowerCase()
+                .replace(/\b(official|colored|color|digital|scanlation|uncensored)\b/gi, '')
+                .replace(/['’]s/gi, '')
+                .replace(/[^a-z0-9]/gi, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+        };
 
-        allResults.forEach(manga => {
-            const titleLower = sanitizeTitle(manga.title);
-            let group = groups.find(g => sanitizeTitle(g[0].title) === titleLower);
+        const wcResults = allResults.filter(r => r.provider === 'weebcentral');
+        const fallbackResults = allResults.filter(r => r.provider !== 'weebcentral');
 
-            if (group) {
-                group.push(manga);
-            } else {
-                groups.push([manga]);
-            }
-        });
+        // 1. Every single WeebCentral result is preserved and never dropped or merged into each other
+        const finalResults: any[] = [];
+        const seenWeebCentralTitles = new Set<string>();
 
-        let finalResults = groups.map(group => {
-            const order: Record<string, number> = { 'weebcentral': 100, 'mangafire': 10, 'mangadex': 5, 'mangapill': 1 };
-            group.sort((a, b) => (order[b.provider] || 0) - (order[a.provider] || 0));
+        for (const item of wcResults) {
+            const cleanT = cleanTitleForDedup(item.title);
+            if (cleanT) seenWeebCentralTitles.add(cleanT);
+            finalResults.push(item);
+        }
+
+        // 2. Fallback results (MangaDex, MangaPill) are added ONLY if they don't duplicate a WeebCentral title
+        for (const item of fallbackResults) {
+            const cleanT = cleanTitleForDedup(item.title);
+            if (!cleanT) continue;
             
-            const best = group[0];
-            const bestType = group.find(m => m.type && m.type !== 'manga' && m.type !== 'comic')?.type || best.type;
-            best.type = bestType;
-            return best;
-        });
+            // Check if this exact title exists on WeebCentral
+            if (seenWeebCentralTitles.has(cleanT)) continue;
+
+            // Check if any altTitle matches a WeebCentral title
+            const altMatchesWC = (item.altTitles || []).some((at: any) => {
+                const raw = typeof at === 'string' ? at : (at.en || at.ko || at.ja || Object.values(at)[0] || '');
+                return seenWeebCentralTitles.has(cleanTitleForDedup(raw));
+            });
+            if (altMatchesWC) continue;
+
+            // Check if already added by another fallback provider
+            const alreadyAdded = finalResults.some(r => r.provider !== 'weebcentral' && cleanTitleForDedup(r.title) === cleanT);
+            if (!alreadyAdded) {
+                finalResults.push(item);
+            }
+        }
 
         // 1. NSFW Filter
-        finalResults = finalResults.filter(m => {
+        let filteredResults = finalResults.filter(m => {
             const rating = m.contentRating?.toLowerCase() || '';
             const status = m.status?.toLowerCase() || '';
             if (rating === 'pornographic' || status === 'pornographic') return false;
@@ -710,18 +733,24 @@ app.get('/api/search', async (req, res) => {
             return true;
         });
 
-        // 2. Keyword Filter (Permissive)
-        // Split the search query into words (ignoring punctuation) and ensure every word is in the title.
-        // This allows searches like "jojo bizarre" to match "JoJo's Bizarre Adventure".
+        // 2. Keyword Filter
+        // WeebCentral results returned by WeebCentral's search engine are always kept.
+        // For fallback providers, ensure all search terms are in the title.
         const searchTerms = (q as string).toLowerCase().replace(/[:\-’']/g, ' ').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
-        finalResults = finalResults.filter(m => {
+        filteredResults = filteredResults.filter(m => {
+            if (m.provider === 'weebcentral') return true;
             const titleRaw = m.title.toLowerCase().replace(/[:\-’']/g, ' ').replace(/\s+/g, ' ').trim();
             return searchTerms.every(term => titleRaw.includes(term));
         });
 
-        // 3. Relevance Sort
-        const qLower = (q as string).toLowerCase();
-        finalResults.sort((a, b) => {
+        // 3. Relevance Sort: WeebCentral results always rank ahead of fallback providers
+        const qLower = cleanQ;
+        filteredResults.sort((a, b) => {
+            const aIsWC = a.provider === 'weebcentral';
+            const bIsWC = b.provider === 'weebcentral';
+            if (aIsWC && !bIsWC) return -1;
+            if (!aIsWC && bIsWC) return 1;
+
             const aTitle = a.title.toLowerCase();
             const bTitle = b.title.toLowerCase();
             
@@ -734,11 +763,16 @@ app.get('/api/search', async (req, res) => {
             const bStarts = bTitle.startsWith(qLower);
             if (aStarts && !bStarts) return -1;
             if (!aStarts && bStarts) return 1;
-            
+
             return 0;
         });
 
-        const payload = { results: finalResults };
+        const payload = {
+            results: filteredResults.map(m => {
+                const { altTitles, ...rest } = m;
+                return rest;
+            })
+        };
         cache.set(cacheKey, payload);
         res.setHeader('Cache-Control', 'public, max-age=120, stale-while-revalidate=600');
         res.json(payload);

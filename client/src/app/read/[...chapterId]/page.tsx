@@ -284,6 +284,22 @@ function ReaderContent() {
   const menuOpenRef = useRef(false);
   menuOpenRef.current = menuOpen;
 
+  /* Lock the document for as long as the reader is on screen. The reader owns
+     the viewport, so the root scroller must never move: on iOS it rubber-bands
+     and on Android it pulls to refresh, and in both cases the canvas behind
+     the artwork flashes through as a black bar when the reader flicks upward.
+     The class is what globals.css keys the lock off. */
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    html.classList.add("yomi-reading");
+    body.classList.add("yomi-reading");
+    return () => {
+      html.classList.remove("yomi-reading");
+      body.classList.remove("yomi-reading");
+    };
+  }, []);
+
   /* Keep the reader in step with auto-detection when it moves between titles
      (route params change but the component stays mounted) — but never over a
      standing user choice for this title, and never over an explicit `mt=` link. */

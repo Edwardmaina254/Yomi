@@ -1327,8 +1327,18 @@ html[data-theme="paper"] .yomi-gbtn:hover:not(:disabled) { background: oklch(98%
   display: flex; flex-direction: column; height: 100dvh;
   position: relative;
   background: var(--bg);
+  /* The reader owns the whole viewport: no rubber band, no pull-to-refresh
+     glow painting the canvas behind the artwork. */
+  overscroll-behavior: none;
 }
-body.yomi-reading { overflow: hidden; }
+/* Applied to <html> and <body> while the reader is mounted (see the reader
+   page). Without it the root scroller rubber-bands on iOS and pulls to
+   refresh on Android, and the canvas behind the artwork shows through as a
+   black bar on every upward flick. */
+html.yomi-reading, body.yomi-reading {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
 
 /* Reader chrome */
 .yomi-r-chrome {
@@ -1519,13 +1529,26 @@ body.yomi-reading { overflow: hidden; }
 
 /* Reader pages container */
 .yomi-pages {
-  flex: 1; overflow-y: auto; overflow-x: hidden;
+  flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
   padding-top: calc(60px + var(--sat));
   padding-bottom: calc(24px + var(--sab));
   background: var(--bg);
-  /* Vertical mode scrolls this element — keep pull-to-refresh / scroll
-     chaining out of it so a flick never drags the page behind the reader. */
-  overscroll-behavior-y: contain;
+  /* `none`, not `contain`: contain stops the scroll from chaining to the
+     page but still lets THIS element rubber-band (iOS) or stretch (Android),
+     and the stretched area is painted with the container background - a black
+     bar across the artwork whenever the reader flicks past the top of the
+     strip. `none` kills the effect entirely. */
+  overscroll-behavior: none;
+}
+
+/* Vertical (webtoon) mode is full-bleed artwork. The reserved band for the
+   fixed chrome was a near-black strip above the first panel that showed up
+   every time the reader scrolled up; the chrome is a translucent overlay, so
+   the strip only ever read as a black bar. */
+.yomi-pages.vertical {
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
 /* ── Vertical Webtoon Reader (Centered & Continuous) ── */

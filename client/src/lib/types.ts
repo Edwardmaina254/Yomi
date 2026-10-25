@@ -837,6 +837,15 @@ export function getProxyUrl(url: string): string {
     "weebcentral.com",
     "compsci88.com",
     "compsci88",
+    "lastation.us",
+    "lastation",
+    "lowee.us",
+    "lowee",
+    "planeptune.us",
+    "planeptune",
+    "leanbox.us",
+    "leanbox",
+    "s-delivery",
   ];
   if (directHosts.some((h) => url.includes(h))) return url;
   // Always use a relative path for proxy so it hits Next.js port 3000 (and is rewritten)

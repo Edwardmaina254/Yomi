@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import compression from 'compression';
 import dotenv from 'dotenv';
 import { supabase } from './config/supabase';
 import { mangaFireService } from './providers/mangafire';
@@ -64,6 +65,9 @@ interface MangaDexMangaResponse {
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Compress all HTTP responses (Gzip/Brotli) to reduce API bandwidth by up to 90%
+app.use(compression());
 
 // Allow all origins in development so testing on mobile (local IP) works without CORS errors
 app.use(cors({
@@ -273,6 +277,7 @@ app.post('/api/scrape', async (req, res) => {
             throw new Error('Chapter not found on this provider. The chapter ID may be invalid or outdated.');
         }
         
+        res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
         return res.json({ images });
     } catch (error: any) {
         console.error('Scraping error:', error.message);

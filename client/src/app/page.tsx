@@ -662,9 +662,9 @@ export default function HomePage() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchWrapRef = useRef<HTMLDivElement>(null);
 
-  const load = useCallback(async (tf: "day" | "week" | "month") => {
+  const load = useCallback(async (tf: "day" | "week" | "month", force = false) => {
     try {
-      const data = await fetchHomeData(tf);
+      const data = await fetchHomeData(tf, force);
       
       const shuffle = (arr: MangaResult[]) => [...arr].sort(() => 0.5 - Math.random());
       
@@ -706,7 +706,7 @@ export default function HomePage() {
     setRefreshing(true);
     setClock(readClock());
     setContinueReading(loadContinueReading());
-    await load(trendingTimeframe);
+    await load(trendingTimeframe, true);
     lastLoadRef.current = Date.now();
     setRefreshing(false);
   }, [load, trendingTimeframe]);

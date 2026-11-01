@@ -896,8 +896,11 @@ async function fetchJikanTop(type: string, limit: number): Promise<MangaResult[]
 }
 
 
+const _homeCache: { [key: string]: { data: any; timestamp: number } } = {};
+
 export async function fetchHomeData(
-  timeframe: "day" | "week" | "month" = "month"
+  timeframe: "day" | "week" | "month" = "month",
+  forceRefresh = false
 ): Promise<{
   trending: MangaResult[];
   manhwa: MangaResult[];
@@ -905,6 +908,23 @@ export async function fetchHomeData(
   latest: MangaResult[];
   latestManhwa: MangaResult[];
 }> {
+  const cacheKey = `home_${timeframe}`;
+  if (!forceRefresh && _homeCache[cacheKey] && Date.now() - _homeCache[cacheKey].timestamp < 10 * 60 * 1000) {
+    return _homeCache[cacheKey].data;
+  }
+  if (!forceRefresh && typeof window !== "undefined") {
+    try {
+      const sess = sessionStorage.getItem(`yomi_cache_${cacheKey}`);
+      if (sess) {
+        const parsed = JSON.parse(sess);
+        if (Date.now() - parsed.timestamp < 10 * 60 * 1000) {
+          _homeCache[cacheKey] = parsed;
+          return parsed.data;
+        }
+      }
+    } catch {}
+  }
+
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 60000);
@@ -932,7 +952,15 @@ export async function fetchHomeData(
       parse(latestManhwaRes),
     ]);
 
-    return { trending, manhwa, comics, latest, latestManhwa };
+    const result = { trending, manhwa, comics, latest, latestManhwa };
+    _homeCache[cacheKey] = { data: result, timestamp: Date.now() };
+    if (typeof window !== "undefined") {
+      try {
+        sessionStorage.setItem(`yomi_cache_${cacheKey}`, JSON.stringify({ data: result, timestamp: Date.now() }));
+      } catch {}
+    }
+
+    return result;
   } catch (error) {
     console.error("Home data fetch failed", error);
     return { trending: [], manhwa: [], comics: [], latest: [], latestManhwa: [] };

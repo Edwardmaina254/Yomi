@@ -416,7 +416,7 @@ const extractMangaDex = (d: any) => {
 import NodeCache from 'node-cache';
 
 
-const cache = new NodeCache({ stdTTL: 300 }); // 5 minutes cache
+const cache = new NodeCache({ stdTTL: 1800, checkperiod: 300 }); // 30 minutes cache in RAM
 
 // Helper to safely fetch from MangaDex API with retry logic for 429 Rate Limits
 const fetchMangaDex = async (url: string, retries = 3): Promise<any> => {
@@ -439,7 +439,7 @@ app.get('/api/trending', async (req, res) => {
     const timeframe = req.query.timeframe as string || 'month';
     const cacheKey = `trending-${type}-${timeframe}`;
     if (cache.has(cacheKey) && !req.query.nocache) {
-        res.setHeader('Cache-Control', 'public, max-age=120, stale-while-revalidate=600');
+        res.setHeader('Cache-Control', 'public, max-age=1800, stale-while-revalidate=86400');
         return res.json(cache.get(cacheKey));
     }
 
@@ -467,7 +467,7 @@ app.get('/api/trending', async (req, res) => {
         if (wcResults && wcResults.length > 0) {
             const payload = { results: wcResults.slice(0, 30) };
             cache.set(cacheKey, payload);
-            res.setHeader('Cache-Control', 'public, max-age=120, stale-while-revalidate=600');
+            res.setHeader('Cache-Control', 'public, max-age=1800, stale-while-revalidate=86400');
             return res.json(payload);
         }
     } catch (e: any) {
@@ -499,7 +499,7 @@ app.get('/api/trending', async (req, res) => {
         
         const payload = { results: results.slice(0, 30) };
         cache.set(cacheKey, payload);
-        res.setHeader('Cache-Control', 'public, max-age=120, stale-while-revalidate=600');
+        res.setHeader('Cache-Control', 'public, max-age=1800, stale-while-revalidate=86400');
         res.json(payload);
     } catch (e: any) {
         console.error('Trending error:', e.message);
@@ -512,7 +512,7 @@ app.get('/api/latest', async (req, res) => {
     const type = req.query.type as string || 'manga';
     const cacheKey = `latest-${type}`;
     if (cache.has(cacheKey) && !req.query.nocache) {
-        res.setHeader('Cache-Control', 'public, max-age=120, stale-while-revalidate=600');
+        res.setHeader('Cache-Control', 'public, max-age=600, stale-while-revalidate=3600');
         return res.json(cache.get(cacheKey));
     }
 
@@ -533,7 +533,7 @@ app.get('/api/latest', async (req, res) => {
         if (wcResults && wcResults.length > 0) {
             const payload = { results: wcResults.slice(0, 30) };
             cache.set(cacheKey, payload);
-            res.setHeader('Cache-Control', 'public, max-age=120, stale-while-revalidate=600');
+            res.setHeader('Cache-Control', 'public, max-age=600, stale-while-revalidate=3600');
             return res.json(payload);
         }
     } catch (e: any) {
@@ -551,7 +551,7 @@ app.get('/api/latest', async (req, res) => {
         
         const payload = { results: results.slice(0, 30) };
         cache.set(cacheKey, payload);
-        res.setHeader('Cache-Control', 'public, max-age=120, stale-while-revalidate=600');
+        res.setHeader('Cache-Control', 'public, max-age=600, stale-while-revalidate=3600');
         res.json(payload);
     } catch (e: any) {
         console.error('Latest error:', e.message);
@@ -608,7 +608,7 @@ app.get('/api/search', async (req, res) => {
     const cleanQ = (q as string).toLowerCase().trim();
     const cacheKey = `search-${cleanQ}`;
     if (cache.has(cacheKey) && !req.query.nocache) {
-        res.setHeader('Cache-Control', 'public, max-age=120, stale-while-revalidate=600');
+        res.setHeader('Cache-Control', 'public, max-age=600, stale-while-revalidate=3600');
         return res.json(cache.get(cacheKey));
     }
 
@@ -779,7 +779,7 @@ app.get('/api/search', async (req, res) => {
             })
         };
         cache.set(cacheKey, payload);
-        res.setHeader('Cache-Control', 'public, max-age=120, stale-while-revalidate=600');
+        res.setHeader('Cache-Control', 'public, max-age=600, stale-while-revalidate=3600');
         res.json(payload);
     } catch (error: any) {
         console.error('Search fetch error:', error.message);
@@ -870,7 +870,7 @@ app.get(/^\/api\/manga\/(.+)\/chapters$/, async (req, res) => {
 
     const cacheKey = `chapters-${providerName}-${decodedId}`;
     if (cache.has(cacheKey)) {
-        res.setHeader('Cache-Control', 'public, max-age=120, stale-while-revalidate=600');
+        res.setHeader('Cache-Control', 'public, max-age=1800, stale-while-revalidate=86400');
         return res.json(cache.get(cacheKey));
     }
 

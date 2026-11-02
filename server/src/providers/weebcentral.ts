@@ -48,6 +48,7 @@ export class WeebCentralService {
     private initPromise: Promise<void> | null = null;
     private queue: Promise<any> = Promise.resolve();
     public lastInitError: string | null = null;
+    private directFetchBlocked = false;
 
     private async handleCloudflareChallenge(page: any, maxWaitMs = 15000): Promise<boolean> {
         const start = Date.now();
@@ -76,9 +77,15 @@ export class WeebCentralService {
     }
 
     private async ensurePage(): Promise<any> {
-        if (this.page && !this.page.isClosed()) {
+        const browser = await getSharedBrowser();
+        if (this.page && !this.page.isClosed() && browser && browser.isConnected()) {
             return this.page;
         }
+
+        if (this.page && !this.page.isClosed()) {
+            try { await this.page.close(); } catch {}
+        }
+        this.page = null;
 
         if (this.initPromise) {
             await this.initPromise;
@@ -87,8 +94,8 @@ export class WeebCentralService {
 
         this.initPromise = (async () => {
             try {
-                const browser = await getSharedBrowser();
-                this.page = await browser.newPage();
+                const activeBrowser = await getSharedBrowser();
+                this.page = await activeBrowser.newPage();
                 await this.page.setBypassCSP(true);
                 await this.page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
@@ -131,12 +138,21 @@ export class WeebCentralService {
      */
     public async evaluateFetch(url: string, headers: Record<string, string> = {}): Promise<{ status: number; text: string }> {
         return this.enqueue(async () => {
-            const page = await this.ensurePage();
-            return await page.evaluate(async (targetUrl: string, reqHeaders: Record<string, string>) => {
-                const res = await fetch(targetUrl, { headers: reqHeaders });
-                const text = await res.text();
-                return { status: res.status, text };
-            }, url, headers);
+            try {
+                const page = await this.ensurePage();
+                return await page.evaluate(async (targetUrl: string, reqHeaders: Record<string, string>) => {
+                    const res = await fetch(targetUrl, { headers: reqHeaders });
+                    const text = await res.text();
+                    return { status: res.status, text };
+                }, url, headers);
+            } catch (err: any) {
+                console.error('[WeebCentral] evaluateFetch error, resetting page:', err.message);
+                if (this.page && !this.page.isClosed()) {
+                    try { await this.page.close(); } catch {}
+                }
+                this.page = null;
+                throw err;
+            }
         });
     }
 
@@ -176,14 +192,21 @@ export class WeebCentralService {
                 'Referer': 'https://weebcentral.com/search'
             };
 
-            // 1. Try fast direct Node fetch
-            try {
-                const directRes = await fetch(url, { headers });
-                const text = await directRes.text();
-                if (directRes.ok && !isCloudflareChallenge(directRes.status, text)) {
-                    return { blocked: false, results: this.parseSearchResults(text) };
+            // 1. Try fast direct Node fetch only if not previously blocked by Cloudflare
+            if (!this.directFetchBlocked) {
+                try {
+                    const directRes = await fetch(url, { headers });
+                    const text = await directRes.text();
+                    if (directRes.ok && !isCloudflareChallenge(directRes.status, text)) {
+                        return { blocked: false, results: this.parseSearchResults(text) };
+                    }
+                    if (isCloudflareChallenge(directRes.status, text) || directRes.status === 403) {
+                        this.directFetchBlocked = true;
+                    }
+                } catch {
+                    this.directFetchBlocked = true;
                 }
-            } catch {}
+            }
 
             // 2. Direct fetch blocked (Cloudflare 403 or challenge) -> route through Stealth Puppeteer
             try {
@@ -353,7 +376,7 @@ export class WeebCentralService {
             if (partMatch) {
                 return `P${partMatch[1]}-${partMatch[2]}`;
             }
-            const chMatch = str.match(/(?:Chapter|Ch|Episode|Ep|Punch|Act|Round|Lesson|Stage)\.?\s*([\d.]+)/i);
+            const chMatch = str.match(/(?:Chapter|Ch|Episode|Ep|Punch|Act|Round|Lesson|Stage|File|Track|Volume|Vol)\.?\s*([\d.]+)/i);
             if (chMatch) {
                 return chMatch[1];
             }
@@ -369,20 +392,48 @@ export class WeebCentralService {
         };
 
         const parseChapters = (html: string): WeebCentralChapter[] => {
+            const $ = loadCheerio(html);
             const chapters: WeebCentralChapter[] = [];
-            const regex = /<a href="\/chapters\/([^"]+)"[^>]*>[\s\S]*?<span class="">([\s\S]*?)<\/span>[\s\S]*?<time[^>]*datetime="([^"]+)"/g;
-            let match;
-            while ((match = regex.exec(html)) !== null) {
-                const title = match[2].trim();
+
+            $('a[href*="/chapters/"]').each((_: any, el: any) => {
+                const href = $(el).attr('href') || '';
+                const idMatch = href.match(/\/chapters\/([^\/\s?#]+)/);
+                if (!idMatch) return;
+                const id = idMatch[1];
+
+                let title = $(el).find('span.grow > span').first().text().trim();
+                if (!title) {
+                    title = $(el).find('span').first().text().trim();
+                }
+                const time = $(el).find('time').attr('datetime') || new Date().toISOString();
+
                 chapters.push({
-                    id: match[1],
+                    id,
                     chapterNumber: extractChapterNumber(title),
-                    title,
+                    title: title || `Chapter ${extractChapterNumber(title)}`,
                     pages: 1,
-                    createdAt: match[3] || new Date().toISOString(),
+                    createdAt: time,
                     provider: 'weebcentral'
                 });
+            });
+
+            // Fallback to regex if Cheerio matched 0 chapters
+            if (chapters.length === 0) {
+                const regex = /<a href="\/chapters\/([^"]+)"[^>]*>[\s\S]*?<span[^>]*>([\s\S]*?)<\/span>[\s\S]*?<time[^>]*datetime="([^"]+)"/g;
+                let match;
+                while ((match = regex.exec(html)) !== null) {
+                    const rawTitle = match[2].replace(/<[^>]+>/g, '').trim();
+                    chapters.push({
+                        id: match[1],
+                        chapterNumber: extractChapterNumber(rawTitle),
+                        title: rawTitle,
+                        pages: 1,
+                        createdAt: match[3] || new Date().toISOString(),
+                        provider: 'weebcentral'
+                    });
+                }
             }
+
             return chapters;
         };
 
@@ -522,7 +573,7 @@ export class WeebCentralService {
             let match;
             while ((match = regex.exec(html)) !== null) {
                 const imgUrl = match[1];
-                if (!imgUrl.includes('brand.png') && !imgUrl.includes('404.png')) {
+                if (!imgUrl.includes('brand.png') && !imgUrl.includes('404.png') && !imgUrl.includes('broken_image')) {
                     images.push(imgUrl);
                 }
             }

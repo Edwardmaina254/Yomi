@@ -200,14 +200,15 @@ const getProvider = (name?: string) => {
         case 'mangapill': return new MANGA.MangaPill();
         case 'mangahere': return new MANGA.MangaHere();
         case 'mangafire': return mangaFireService as any;
-        case 'weebcentral': return new MANGA.WeebCentral();
-        default: return new MANGA.WeebCentral();
+        case 'weebcentral': return weebCentralService as any;
+        default: return weebCentralService as any;
     }
 };
 
 // Scrape endpoint (now fetches pages via specified provider)
 app.post('/api/scrape', async (req, res) => {
-    const { url, provider: providerName, mangaId } = req.body; 
+    const { url, provider: rawProvider, mangaId } = req.body; 
+    const providerName = ((rawProvider as string) || 'weebcentral').toLowerCase();
     console.log(`Scrape requested for: ${url} using ${providerName}`);
 
     try {
@@ -275,6 +276,11 @@ app.post('/api/scrape', async (req, res) => {
 
         if (images.some(img => img.includes('404.png') || img.includes('brand.png'))) {
             throw new Error('Chapter not found on this provider. The chapter ID may be invalid or outdated.');
+        }
+
+        if (images.length === 0) {
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+            return res.status(502).json({ error: 'Chapter pages could not be loaded at this time. Please retry.' });
         }
         
         res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
@@ -608,8 +614,11 @@ app.get('/api/search', async (req, res) => {
     const cleanQ = (q as string).toLowerCase().trim();
     const cacheKey = `search-${cleanQ}`;
     if (cache.has(cacheKey) && !req.query.nocache) {
-        res.setHeader('Cache-Control', 'public, max-age=600, stale-while-revalidate=3600');
-        return res.json(cache.get(cacheKey));
+        const cached = cache.get(cacheKey) as any;
+        if (cached && cached.results && cached.results.length > 0) {
+            res.setHeader('Cache-Control', 'public, max-age=600, stale-while-revalidate=3600');
+            return res.json(cached);
+        }
     }
 
     // High-speed provider selection: WeebCentral (King for all manga & manhwa) + fallback
@@ -778,8 +787,13 @@ app.get('/api/search', async (req, res) => {
                 return rest;
             })
         };
-        cache.set(cacheKey, payload);
-        res.setHeader('Cache-Control', 'public, max-age=600, stale-while-revalidate=3600');
+        if (payload.results.length > 0) {
+            cache.set(cacheKey, payload, 600);
+            res.setHeader('Cache-Control', 'public, max-age=600, stale-while-revalidate=3600');
+        } else {
+            cache.set(cacheKey, payload, 15);
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        }
         res.json(payload);
     } catch (error: any) {
         console.error('Search fetch error:', error.message);
@@ -788,7 +802,7 @@ app.get('/api/search', async (req, res) => {
 });
 
 const FALLBACK_PROVIDERS = [
-    { name: 'weebcentral', instance: () => new MANGA.WeebCentral() },
+    { name: 'weebcentral', instance: () => weebCentralService },
     { name: 'mangafire', instance: () => mangaFireService },
     { name: 'mangapill', instance: () => new MANGA.MangaPill() },
     { name: 'mangadex', instance: () => new MANGA.MangaDex() }
@@ -864,14 +878,18 @@ const mapChapters = (data: any, resolvedProvider: string) => {
 
 // Chapters endpoint — with cross-provider fallback for maximum chapter coverage
 app.get(/^\/api\/manga\/(.+)\/chapters$/, async (req, res) => {
-    const { provider: providerName, title: reqTitle } = req.query;
+    const { provider: rawProvider, title: reqTitle } = req.query;
+    const providerName = ((rawProvider as string) || 'weebcentral').toLowerCase();
     const fullId = req.params[0];
     const decodedId = decodeURIComponent(fullId);
 
     const cacheKey = `chapters-${providerName}-${decodedId}`;
-    if (cache.has(cacheKey)) {
-        res.setHeader('Cache-Control', 'public, max-age=1800, stale-while-revalidate=86400');
-        return res.json(cache.get(cacheKey));
+    if (cache.has(cacheKey) && !req.query.nocache) {
+        const cached = cache.get(cacheKey) as any;
+        if (cached && cached.chapters && cached.chapters.length > 0) {
+            res.setHeader('Cache-Control', 'public, max-age=1800, stale-while-revalidate=86400');
+            return res.json(cached);
+        }
     }
 
     const provider = getProvider(providerName as string);
@@ -1050,8 +1068,9 @@ app.get(/^\/api\/manga\/(.+)\/chapters$/, async (req, res) => {
             if (!data.id) data.id = decodedId;
             if (!data.title) data.title = searchTitle;
             if (!data.image) data.image = `https://temp.compsci88.com/cover/normal/${decodedId.split('/')[0]}.webp`;
-            const payload = mapChapters(data, providerName as string);
+            const payload = mapChapters(data, providerName);
             cache.set(cacheKey, payload);
+            res.setHeader('Cache-Control', 'public, max-age=1800, stale-while-revalidate=86400');
             return res.json(payload);
         }
 
@@ -1126,8 +1145,8 @@ app.get(/^\/api\/manga\/(.+)\/chapters$/, async (req, res) => {
 
         if (bestResult.count === 0) {
             const emptyPayload = { manga: { id: decodedId, title: searchTitle, resolvedProvider: providerName }, chapters: [] };
-            cache.set(cacheKey, emptyPayload);
-            res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=120');
+            cache.set(cacheKey, emptyPayload, 15);
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
             return res.json(emptyPayload);
         }
 
@@ -1135,7 +1154,7 @@ app.get(/^\/api\/manga\/(.+)\/chapters$/, async (req, res) => {
 
         const payload = mapChapters(bestResult.data, bestResult.provider);
         cache.set(cacheKey, payload);
-        res.setHeader('Cache-Control', 'public, max-age=120, stale-while-revalidate=600');
+        res.setHeader('Cache-Control', 'public, max-age=1800, stale-while-revalidate=86400');
         return res.json(payload);
     } catch (error: any) {
         console.error('Chapter fetch error:', error.stack);

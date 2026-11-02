@@ -562,6 +562,11 @@ function SpotlightCarousel({ pool }: { pool: MangaResult[] }) {
                 className="yomi-spot-cover"
                 onError={(e) => {
                   const t = e.currentTarget;
+                  if (!t.dataset.retried && !t.src.includes("/api/proxy")) {
+                    t.dataset.retried = "1";
+                    t.src = `${API_URL || ""}/api/proxy?url=${encodeURIComponent(d.coverUrl || "")}`;
+                    return;
+                  }
                   t.style.display = "none";
                   t.parentElement?.classList.add("no-img");
                 }}

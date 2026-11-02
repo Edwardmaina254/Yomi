@@ -364,7 +364,16 @@ export default function LibraryPage() {
                     >
                       <div className="yomi-cover" style={gradientStyle(`${item.provider}-${item.id}`)}>
                         {item.coverUrl ? (
-                          <img src={getProxyUrl(item.coverUrl)} alt="" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.style.display = "none"; e.currentTarget.parentElement?.classList.add("no-img"); }} />
+                          <img src={getProxyUrl(item.coverUrl)} alt="" referrerPolicy="no-referrer" onError={(e) => {
+                            const t = e.currentTarget;
+                            if (!t.dataset.retried && !t.src.includes("/api/proxy")) {
+                              t.dataset.retried = "1";
+                              t.src = `${API_URL || ""}/api/proxy?url=${encodeURIComponent(item.coverUrl || "")}`;
+                              return;
+                            }
+                            t.style.display = "none";
+                            t.parentElement?.classList.add("no-img");
+                          }} />
                         ) : (
                           <span className="placeholder-glyph">{glyphFromTitle(item.title)}</span>
                         )}

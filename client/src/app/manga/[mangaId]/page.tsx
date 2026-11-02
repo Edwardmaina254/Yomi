@@ -404,10 +404,24 @@ function MangaDetailsContent() {
             <div className="inner">
               <div className="yomi-cover" style={gradientStyle(`${provider}-${mangaId}`)}>
                 {manga.coverUrl ? (
-                  <img src={getProxyUrl(manga.coverUrl)} alt={title} referrerPolicy="no-referrer" />
-                ) : (
-                  <span className="placeholder-glyph">{glyphFromTitle(title)}</span>
-                )}
+                    <img
+                      src={getProxyUrl(manga.coverUrl)}
+                      alt={title}
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        const t = e.currentTarget;
+                        if (!t.dataset.retried && !t.src.includes("/api/proxy")) {
+                          t.dataset.retried = "1";
+                          t.src = `${API_URL || ""}/api/proxy?url=${encodeURIComponent(manga.coverUrl || "")}`;
+                          return;
+                        }
+                        t.style.display = "none";
+                        t.parentElement?.classList.add("no-img");
+                      }}
+                    />
+                  ) : (
+                    <span className="placeholder-glyph">{glyphFromTitle(title)}</span>
+                  )}
               </div>
 
               <div style={{ minWidth: 0 }}>

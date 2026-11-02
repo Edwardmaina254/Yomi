@@ -151,6 +151,7 @@ app.get('/api/proxy', async (req, res) => {
         // Build the correct Referer header per CDN
         let referer = 'https://mangadex.org/';
 
+        const isMangaDex = targetUrl.includes('mangadex');
         if (targetUrl.includes('readdetectiveconan.com') || targetUrl.includes('mangapill.com')) {
             referer = 'https://mangapill.com/';
         } else if (targetUrl.includes('weebcentral.com') || targetUrl.includes('compsci88') || targetUrl.includes('lastation') || targetUrl.includes('lowee') || targetUrl.includes('planeptune') || targetUrl.includes('leanbox')) {
@@ -163,16 +164,24 @@ app.get('/api/proxy', async (req, res) => {
             referer = 'https://www.webtoons.com/';
         }
 
-        const response = await fetch(targetUrl, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Referer': referer,
-                'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
-            }
-        });
+        // MangaDex blocks standard browser User-Agents (Mozilla/5.0 Chrome/...) with HTTP 403.
+        // Only a neutral/non-browser UA (e.g. Yomi/1.0) reliably returns 200.
+        // Also skip sending a Referer to MangaDex — any external Referer triggers the block.
+        const userAgent = isMangaDex
+            ? 'Yomi/1.0'
+            : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+        const fetchHeaders: Record<string, string> = {
+            'User-Agent': userAgent,
+            'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+        };
+        if (!isMangaDex) {
+            fetchHeaders['Referer'] = referer;
+        }
+
+        const response = await fetch(targetUrl, { headers: fetchHeaders });
 
         if (!response.ok) {
-            console.error(`Proxy upstream error: ${response.status} ${response.statusText} for ${targetUrl} (referer: ${referer})`);
+            console.error(`Proxy upstream error: ${response.status} ${response.statusText} for ${targetUrl} (referer: ${isMangaDex ? 'none' : referer})`);
             throw new Error(`Upstream returned ${response.status}`);
         }
 

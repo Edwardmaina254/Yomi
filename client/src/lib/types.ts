@@ -829,11 +829,12 @@ export function extractString(val: string | { [key: string]: string } | undefine
 
 export function getProxyUrl(url: string): string {
   if (!url) return "";
-  // Public reader CDNs hotlink fine cross-origin — no proxy needed to display.
+  // WeebCentral's CDNs allow direct cross-origin hotlinking — skip the proxy for them.
+  // MangaDex (mangadex.org / uploads.mangadex.org) blocks standard browser User-Agents
+  // with 403, so it must go through /api/proxy which sends a neutral UA (Yomi/1.0).
+  // MAL CDN is CORS-open and can also be loaded directly.
   const directHosts = [
     "cdn.myanimelist.net",
-    "uploads.mangadex.org",
-    "mangadex.org",
     "weebcentral.com",
     "compsci88.com",
     "compsci88",

@@ -275,7 +275,48 @@ app.post('/api/scrape', async (req, res) => {
         }
 
         if (images.some(img => img.includes('404.png') || img.includes('brand.png'))) {
-            throw new Error('Chapter not found on this provider. The chapter ID may be invalid or outdated.');
+            images = [];
+        }
+
+        // Auto-heal: If chapter returned 0 pages (e.g. outdated WeebCentral chapter ID from Continue Reading)
+        if (images.length === 0 && providerName === 'weebcentral' && (mangaId || req.body.title)) {
+            console.log(`[Scrape Auto-Heal] Chapter ${decodedUrl} returned 0 pages. Attempting auto-heal for: ${req.body.title || mangaId}`);
+            try {
+                let resolvedManga: any = null;
+                if (mangaId) {
+                    const cleanMangaId = String(mangaId).split('/')[0];
+                    const info = await weebCentralService.fetchMangaInfo(cleanMangaId);
+                    if (info && info.chapters && info.chapters.length > 0) {
+                        resolvedManga = info;
+                    }
+                }
+                if (!resolvedManga) {
+                    const searchQuery = req.body.title || (mangaId && String(mangaId).includes('/') ? String(mangaId).split('/')[1].replace(/-/g, ' ') : mangaId);
+                    if (searchQuery) {
+                        const searchRes = await weebCentralService.search(searchQuery);
+                        if (searchRes.results.length > 0) {
+                            resolvedManga = await weebCentralService.fetchMangaInfo(searchRes.results[0].id);
+                        }
+                    }
+                }
+                if (resolvedManga && resolvedManga.chapters.length > 0) {
+                    const reqChNum = req.body.chapterNumber ? String(req.body.chapterNumber) : null;
+                    let targetChapter = reqChNum ? resolvedManga.chapters.find((c: any) => c.chapterNumber === reqChNum) : null;
+                    if (!targetChapter) {
+                        targetChapter = resolvedManga.chapters.find((c: any) => c.chapterNumber === '1') || resolvedManga.chapters[resolvedManga.chapters.length - 1];
+                    }
+                    if (targetChapter && targetChapter.id !== decodedUrl) {
+                        console.log(`[Scrape Auto-Heal] Re-routing to active chapter ${targetChapter.title} (${targetChapter.id})`);
+                        const healedImages = await weebCentralService.fetchChapterPages(targetChapter.id);
+                        if (healedImages.length > 0) {
+                            res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+                            return res.json({ images: healedImages, healedChapterId: targetChapter.id, healedMangaId: resolvedManga.id });
+                        }
+                    }
+                }
+            } catch (autoHealErr: any) {
+                console.error('[Scrape Auto-Heal] Error:', autoHealErr.message);
+            }
         }
 
         if (images.length === 0) {

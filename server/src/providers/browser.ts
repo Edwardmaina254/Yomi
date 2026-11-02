@@ -31,7 +31,7 @@ export function getLocalChromeExecutable(): string | undefined {
 }
 
 export async function getSharedBrowser(): Promise<any> {
-    if (sharedBrowser && sharedBrowser.isConnected()) {
+    if (sharedBrowser && (typeof sharedBrowser.connected === 'boolean' ? sharedBrowser.connected : true)) {
         return sharedBrowser;
     }
     if (launchPromise) {

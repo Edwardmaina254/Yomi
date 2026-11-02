@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, Suspense } from "react";
+import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -523,13 +524,27 @@ function ReaderContent() {
         const res = await fetch(`${API_URL}/api/scrape`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url: chapterId, provider, mangaId: sourceMangaId }),
+          body: JSON.stringify({
+            url: chapterId,
+            provider,
+            mangaId: sourceMangaId,
+            title,
+            chapterNumber: searchParams.get("ch") || undefined
+          }),
         });
         const data = await res.json();
         if (cancelled) return;
         if (!data.images || data.images.length === 0) {
           setError("This chapter returned no pages.");
           return;
+        }
+
+        // If backend auto-healed to a fresh chapter ID, update the URL seamlessly
+        if (data.healedChapterId && data.healedChapterId !== chapterId && typeof window !== "undefined") {
+          const currentUrl = new URL(window.location.href);
+          currentUrl.pathname = `/read/${encodeURIComponent(data.healedChapterId)}`;
+          if (data.healedMangaId) currentUrl.searchParams.set("manga", data.healedMangaId);
+          window.history.replaceState(null, "", currentUrl.toString());
         }
         setImages(data.images);
         const total = data.images.length;
@@ -1727,13 +1742,24 @@ function ReaderContent() {
 
   if (error || images.length === 0) {
     return (
-      <div style={{ height: "100dvh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "var(--bg)", textAlign: "center", gap: 6 }}>
+      <div style={{ height: "100dvh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "var(--bg)", textAlign: "center", gap: 6, padding: "0 20px" }}>
         <span style={{ fontFamily: "var(--font-jp)", fontSize: 64, color: "var(--border)" }}>読</span>
         <p style={{ fontWeight: 600 }}>{error || "No pages to show."}</p>
-        <p style={{ color: "var(--muted)", fontSize: 14 }}>This provider may not have readable pages.</p>
-        <button className="yomi-btn yomi-btn-ghost" style={{ marginTop: 18 }} onClick={() => goBack(detailHref)}>
-          Go back
-        </button>
+        <p style={{ color: "var(--muted)", fontSize: 14 }}>This chapter could not be displayed directly.</p>
+        <div style={{ display: "flex", gap: 12, marginTop: 18, flexWrap: "wrap", justifyContent: "center" }}>
+          <button className="yomi-btn yomi-btn-ghost" onClick={() => goBack(detailHref)}>
+            Go back
+          </button>
+          {sourceMangaId && (
+            <Link
+              href={`/manga/${encodeURIComponent(sourceMangaId)}?provider=${provider}&t=${encodeURIComponent(title)}`}
+              className="yomi-btn"
+              style={{ textDecoration: "none" }}
+            >
+              Browse Series Chapters
+            </Link>
+          )}
+        </div>
       </div>
     );
   }

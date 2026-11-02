@@ -909,15 +909,15 @@ export async function fetchHomeData(
   latestManhwa: MangaResult[];
 }> {
   const cacheKey = `home_${timeframe}`;
-  if (!forceRefresh && _homeCache[cacheKey] && Date.now() - _homeCache[cacheKey].timestamp < 10 * 60 * 1000) {
+  if (!forceRefresh && _homeCache[cacheKey] && Date.now() - _homeCache[cacheKey].timestamp < 3 * 60 * 1000) {
     return _homeCache[cacheKey].data;
   }
   if (!forceRefresh && typeof window !== "undefined") {
     try {
-      const sess = sessionStorage.getItem(`yomi_cache_${cacheKey}`);
+      const sess = sessionStorage.getItem(`yomi_cache_v2_${cacheKey}`);
       if (sess) {
         const parsed = JSON.parse(sess);
-        if (Date.now() - parsed.timestamp < 10 * 60 * 1000) {
+        if (Date.now() - parsed.timestamp < 3 * 60 * 1000) {
           _homeCache[cacheKey] = parsed;
           return parsed.data;
         }
@@ -956,7 +956,7 @@ export async function fetchHomeData(
     _homeCache[cacheKey] = { data: result, timestamp: Date.now() };
     if (typeof window !== "undefined") {
       try {
-        sessionStorage.setItem(`yomi_cache_${cacheKey}`, JSON.stringify({ data: result, timestamp: Date.now() }));
+        sessionStorage.setItem(`yomi_cache_v2_${cacheKey}`, JSON.stringify({ data: result, timestamp: Date.now() }));
       } catch {}
     }
 

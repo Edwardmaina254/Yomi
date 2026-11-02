@@ -78,7 +78,8 @@ export class WeebCentralService {
 
     private async ensurePage(): Promise<any> {
         const browser = await getSharedBrowser();
-        if (this.page && !this.page.isClosed() && browser && browser.isConnected()) {
+        const isConnected = typeof browser?.connected === 'boolean' ? browser.connected : true;
+        if (this.page && !this.page.isClosed() && browser && isConnected) {
             return this.page;
         }
 

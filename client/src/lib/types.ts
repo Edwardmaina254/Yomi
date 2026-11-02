@@ -848,9 +848,9 @@ export function getProxyUrl(url: string): string {
     "s-delivery",
   ];
   if (directHosts.some((h) => url.includes(h))) return url;
-  // Always use a relative path for proxy so it hits Next.js port 3000 (and is rewritten)
-  // This prevents SSR from hardcoding 127.0.0.1 in <img src> tags sent to phones.
-  return `/api/proxy?url=${encodeURIComponent(url)}`;
+  // In the browser, route directly to API_URL so it avoids double-hopping through Next.js rewrites on Render.
+  const base = typeof window !== 'undefined' && API_URL ? API_URL : '';
+  return `${base}/api/proxy?url=${encodeURIComponent(url)}`;
 }
 
 /* ── Home data: Yomi backend routes first, Jikan direct fallback ── */

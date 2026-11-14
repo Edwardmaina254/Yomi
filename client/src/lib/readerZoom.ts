@@ -60,37 +60,6 @@ export function useReaderZoom({
   /** Blocks chrome/page-turn taps right after a double-tap zoom commits. */
   const suppressTapUntil = useRef(0);
 
-  /** Manual zoom controls - step-based zoom for button controls */
-  const zoomIn = useCallback(() => {
-    const vp = viewportRef.current;
-    if (!vp) return;
-    const rect = vp.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    const nextScale = Math.min(st.current.s + 0.5, ZOOM_MAX);
-    setZoomAt(nextScale, centerX, centerY);
-  }, [viewportRef, setZoomAt]);
-
-  const zoomOut = useCallback(() => {
-    const vp = viewportRef.current;
-    if (!vp) return;
-    const rect = vp.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    const nextScale = Math.max(st.current.s - 0.5, ZOOM_MIN);
-    setZoomAt(nextScale, centerX, centerY);
-  }, [viewportRef, setZoomAt]);
-
-  /** Preset zoom levels for common reading scenarios */
-  const setZoomPreset = useCallback((preset: 1.5 | 2 | 2.5 | 3) => {
-    const vp = viewportRef.current;
-    if (!vp) return;
-    const rect = vp.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    setZoomAt(preset, centerX, centerY);
-  }, [viewportRef, setZoomAt]);
-
   const st = useRef({
     x: 0,
     y: 0,

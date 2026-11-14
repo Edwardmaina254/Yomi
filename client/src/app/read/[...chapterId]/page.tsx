@@ -289,15 +289,54 @@ function ReaderContent() {
      the viewport, so the root scroller must never move: on iOS it rubber-bands
      and on Android it pulls to refresh, and in both cases the canvas behind
      the artwork flashes through as a black bar when the reader flicks upward.
-     The class is what globals.css keys the lock off. */
+     The class is what globals.css keys the lock off.
+
+     Before locking, nudge the window scroll by 1px then immediately reset it.
+     This is the only browser-sanctioned way to coax Chrome/Android to retract
+     its address-bar + bottom-nav-bar ("browser chrome") so the full 100dvh
+     is available for the reader. Without this nudge the bars stay visible and
+     cover the bottom chapter-navigation buttons, making them untappable. */
   useEffect(() => {
     const html = document.documentElement;
     const body = document.body;
-    html.classList.add("yomi-reading");
-    body.classList.add("yomi-reading");
+
+    // Nudge scroll BEFORE locking so the body is still scrollable when we do it.
+    if (typeof window !== "undefined") {
+      // Temporarily make the body taller than the viewport so there is room to scroll.
+      body.style.minHeight = "calc(100vh + 2px)";
+      window.scrollTo(0, 1);
+      // Restore and lock in the same frame after the scroll event fires.
+      requestAnimationFrame(() => {
+        window.scrollTo(0, 0);
+        body.style.minHeight = "";
+        html.classList.add("yomi-reading");
+        body.classList.add("yomi-reading");
+        // Track how much of the browser bar is still visible (innerHeight vs
+        // visualViewport.height). Write it as --browser-bar so CSS can pad
+        // bottom buttons safely even if the bars didn't retract.
+        const updateBar = () => {
+          const vv = window.visualViewport;
+          const bar = vv ? Math.max(0, window.innerHeight - vv.height - (vv.offsetTop || 0)) : 0;
+          html.style.setProperty("--browser-bar", `${bar}px`);
+        };
+        updateBar();
+        const vv = window.visualViewport;
+        if (vv) vv.addEventListener("resize", updateBar);
+        (html as any)._yomiBarCleanup = () => { if (vv) vv.removeEventListener("resize", updateBar); };
+      });
+    } else {
+      html.classList.add("yomi-reading");
+      body.classList.add("yomi-reading");
+    }
+
     return () => {
       html.classList.remove("yomi-reading");
       body.classList.remove("yomi-reading");
+      html.style.removeProperty("--browser-bar");
+      if (typeof (html as any)._yomiBarCleanup === "function") {
+        (html as any)._yomiBarCleanup();
+        delete (html as any)._yomiBarCleanup;
+      }
     };
   }, []);
 
@@ -2024,7 +2063,7 @@ function ReaderContent() {
           style={{
             position: "fixed",
             left: "50%",
-            bottom: "calc(20px + var(--sab))",
+            bottom: "calc(20px + var(--sab) + var(--browser-bar, 0px))",
             transform: "translateX(-50%)",
             zIndex: 35,
             fontFamily: "var(--font-mono)",

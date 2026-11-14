@@ -1322,6 +1322,13 @@ html[data-theme="paper"] .yomi-gbtn:hover:not(:disabled) { background: oklch(98%
   background: var(--surface); font-family: var(--font-mono); outline: none;
 }
 
+:root {
+  /* Fallback: 0px when reader is not active or bars are hidden. Set by JS in
+     the reader on mount (visualViewport.height vs window.innerHeight) so CSS
+     knows exactly how tall the browser chrome still is and can pad accordingly. */
+  --browser-bar: 0px;
+}
+
 /* ── Reader ── */
 .yomi-reader {
   display: flex; flex-direction: column; height: 100dvh;
@@ -1588,7 +1595,9 @@ html.yomi-reading, body.yomi-reading {
   width: 100%;
   max-width: 760px;
   margin: 0 auto;
-  padding: 60px 22px calc(44px + var(--sab));
+  /* Include --browser-bar so the buttons are never hidden behind Chrome's
+     bottom navigation bar on Android when the bar didn't retract. */
+  padding: 60px 22px calc(44px + var(--sab) + var(--browser-bar, 0px));
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1664,7 +1673,9 @@ html.yomi-reading, body.yomi-reading {
 /* Page-flip boundary pills (first / last page) */
 .yomi-chapedge {
   position: fixed;
-  bottom: calc(16px + var(--sab));
+  /* Include --browser-bar so pills clear the Android bottom nav bar even
+     when the browser UI didn't retract after the initial scroll nudge. */
+  bottom: calc(16px + var(--sab) + var(--browser-bar, 0px));
   z-index: 38;
   display: inline-flex;
   align-items: center;
@@ -1702,7 +1713,7 @@ html.yomi-reading, body.yomi-reading {
 }
 
 @media (max-width: 560px) {
-  .yomi-chapend { padding: 48px 16px calc(36px + var(--sab)); }
+  .yomi-chapend { padding: 48px 16px calc(36px + var(--sab) + var(--browser-bar, 0px)); }
   .yomi-chapend-btn { flex: 1 1 140px; min-width: 0; height: 48px; padding: 0 14px; }
   .yomi-chapend-title { font-size: 1.15rem; }
 }

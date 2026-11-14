@@ -291,52 +291,116 @@ function ReaderContent() {
      the artwork flashes through as a black bar when the reader flicks upward.
      The class is what globals.css keys the lock off.
 
-     Before locking, nudge the window scroll by 1px then immediately reset it.
-     This is the only browser-sanctioned way to coax Chrome/Android to retract
-     its address-bar + bottom-nav-bar ("browser chrome") so the full 100dvh
-     is available for the reader. Without this nudge the bars stay visible and
-     cover the bottom chapter-navigation buttons, making them untappable. */
+     Chrome/Android browser chrome (address bar + bottom toolbar) is the other
+     half of the problem: a one-shot scrollTo(0,1) on mount rarely retracts it
+     (needs a user gesture, and overflow:hidden stops later document scrolls
+     from collapsing the bars). We:
+       1. Pin the reader to the visual viewport (--vvh / --vv-top) so chapter
+          buttons always sit in the tappable visible area even when bars stay.
+       2. Track the residual bottom inset as --browser-bar for extra padding.
+       3. Re-run the scroll nudge on touch / visibility — under a real gesture
+          Chrome will actually retract the toolbars. */
   useEffect(() => {
     const html = document.documentElement;
     const body = document.body;
+    let nudgeTimer = 0;
+    let lastNudge = 0;
 
-    // Nudge scroll BEFORE locking so the body is still scrollable when we do it.
-    if (typeof window !== "undefined") {
-      // Temporarily make the body taller than the viewport so there is room to scroll.
-      body.style.minHeight = "calc(100vh + 2px)";
-      window.scrollTo(0, 1);
-      // Restore and lock in the same frame after the scroll event fires.
-      requestAnimationFrame(() => {
-        window.scrollTo(0, 0);
-        body.style.minHeight = "";
-        html.classList.add("yomi-reading");
-        body.classList.add("yomi-reading");
-        // Track how much of the browser bar is still visible (innerHeight vs
-        // visualViewport.height). Write it as --browser-bar so CSS can pad
-        // bottom buttons safely even if the bars didn't retract.
-        const updateBar = () => {
-          const vv = window.visualViewport;
-          const bar = vv ? Math.max(0, window.innerHeight - vv.height - (vv.offsetTop || 0)) : 0;
-          html.style.setProperty("--browser-bar", `${bar}px`);
-        };
-        updateBar();
-        const vv = window.visualViewport;
-        if (vv) vv.addEventListener("resize", updateBar);
-        (html as any)._yomiBarCleanup = () => { if (vv) vv.removeEventListener("resize", updateBar); };
-      });
-    } else {
+    const lock = () => {
       html.classList.add("yomi-reading");
       body.classList.add("yomi-reading");
-    }
-
-    return () => {
+    };
+    const unlock = () => {
       html.classList.remove("yomi-reading");
       body.classList.remove("yomi-reading");
-      html.style.removeProperty("--browser-bar");
-      if (typeof (html as any)._yomiBarCleanup === "function") {
-        (html as any)._yomiBarCleanup();
-        delete (html as any)._yomiBarCleanup;
+    };
+
+    const syncViewport = () => {
+      const vv = window.visualViewport;
+      if (vv) {
+        const top = Math.max(0, vv.offsetTop || 0);
+        const bottom = Math.max(0, window.innerHeight - vv.height - top);
+        html.style.setProperty("--vv-top", `${top}px`);
+        html.style.setProperty("--vvh", `${vv.height}px`);
+        html.style.setProperty("--browser-bar", `${bottom}px`);
+      } else {
+        html.style.setProperty("--vv-top", "0px");
+        html.style.setProperty("--vvh", `${window.innerHeight}px`);
+        html.style.setProperty("--browser-bar", "0px");
       }
+    };
+
+    /* Briefly unlock the root scroller, scroll 1px, then relock. Chrome only
+       retracts its toolbars when document scroll moves — and preferably when
+       that move is tied to a user gesture. Throttled so a scroll flick of
+       touches doesn't unlock/relock every frame. */
+    const hideBrowserChrome = (force = false) => {
+      const now = Date.now();
+      if (!force && now - lastNudge < 1200) return;
+      lastNudge = now;
+      const vv = window.visualViewport;
+      unlock();
+      const base = Math.max(window.innerHeight, vv?.height || 0);
+      body.style.minHeight = `${base + 8}px`;
+      window.scrollTo(0, 1);
+      window.clearTimeout(nudgeTimer);
+      nudgeTimer = window.setTimeout(() => {
+        window.scrollTo(0, 0);
+        body.style.minHeight = "";
+        lock();
+        syncViewport();
+      }, 50) as unknown as number;
+    };
+
+    // Mount: nudge once while the body is still scrollable, then lock + sync.
+    body.style.minHeight = `${window.innerHeight + 8}px`;
+    window.scrollTo(0, 1);
+    requestAnimationFrame(() => {
+      window.scrollTo(0, 0);
+      body.style.minHeight = "";
+      lock();
+      syncViewport();
+      /* A second pass shortly after paint — first paint often still has the
+         bars expanded; giving Chrome a beat then re-nudging helps. */
+      window.setTimeout(() => hideBrowserChrome(true), 120);
+    });
+
+    const vv = window.visualViewport;
+    vv?.addEventListener("resize", syncViewport);
+    vv?.addEventListener("scroll", syncViewport);
+    window.addEventListener("resize", syncViewport);
+    window.addEventListener("orientationchange", syncViewport);
+
+    /* touchend (not touchstart): never steal the tap from chapter buttons.
+       Skip interactive targets entirely — the visual-viewport pin already
+       keeps those controls tappable; the nudge is only for reclaiming space. */
+    const onTouchEnd = (e: TouchEvent) => {
+      const el = e.target as Element | null;
+      if (el?.closest?.("button, a, input, textarea, select, label, [role='button']")) {
+        syncViewport();
+        return;
+      }
+      hideBrowserChrome(false);
+    };
+    window.addEventListener("touchend", onTouchEnd, { passive: true });
+
+    const onVis = () => {
+      if (document.visibilityState === "visible") hideBrowserChrome(true);
+    };
+    document.addEventListener("visibilitychange", onVis);
+
+    return () => {
+      window.clearTimeout(nudgeTimer);
+      unlock();
+      html.style.removeProperty("--browser-bar");
+      html.style.removeProperty("--vvh");
+      html.style.removeProperty("--vv-top");
+      vv?.removeEventListener("resize", syncViewport);
+      vv?.removeEventListener("scroll", syncViewport);
+      window.removeEventListener("resize", syncViewport);
+      window.removeEventListener("orientationchange", syncViewport);
+      window.removeEventListener("touchend", onTouchEnd);
+      document.removeEventListener("visibilitychange", onVis);
     };
   }, []);
 
@@ -2061,7 +2125,7 @@ function ReaderContent() {
       {mode === "vertical" && (
         <div
           style={{
-            position: "fixed",
+            position: "absolute",
             left: "50%",
             bottom: "calc(20px + var(--sab) + var(--browser-bar, 0px))",
             transform: "translateX(-50%)",

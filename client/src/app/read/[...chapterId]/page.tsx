@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { unmarkDeleted } from "@/lib/continue";
 import { API_URL, getProxyUrl, getMangaType, getMangaTitle, extractString, looksLikeId, modeForType, detectTypeFromTitle, detectTypeFromGeometry, detectKnownWebtoon, rememberType, rememberTitle, findChapterById, getModeOverride, rememberModeOverride, clearModeOverride, parseChapterSortKey, type Chapter } from "@/lib/types";
 import { navReplace } from "@/lib/navHistory";
+import { useReaderZoom } from "@/lib/readerZoom";
 import { useNav } from "@/contexts/NavContext";
 import gsap from "gsap";
 import {
@@ -27,6 +28,8 @@ import {
   Maximize,
   Minimize,
   Wand2,
+  Plus,
+  Minus,
 } from "lucide-react";
 
 type Mode = "vertical" | "paginated";
@@ -584,6 +587,9 @@ function ReaderContent() {
   const flipToken = useRef(0);
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const zoomContentRef = useRef<HTMLDivElement>(null);
+  const isZoomedRef = useRef(false);
+  const suppressZoomTapRef = useRef<() => boolean>(() => false);
   const progressRef = useRef<HTMLDivElement>(null);
   const chapterListRef = useRef<HTMLDivElement>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1249,6 +1255,39 @@ function ReaderContent() {
     gsap.to(shade, { autoAlpha: 0, duration: 0.3, overwrite: "auto" });
   }, []);
 
+  /* Pinch-zoom for both manga (page-flip) and manhwa (vertical). Owns two-finger
+     gestures and one-finger pan while zoomed; at 1× vertical scrolling stays
+     native. A pinch mid-turn cancels the flip so the two systems never fight. */
+  const cancelFlipForZoom = useCallback(() => {
+    const d = drag.current;
+    if (d.active) {
+      d.active = false;
+      d.dir = 0;
+      d.moved = false;
+      d.u = 0;
+      d.prepared = 0;
+      cancelDragPaint();
+      springBack();
+    }
+  }, [cancelDragPaint, springBack]);
+
+  const {
+    scale: zoomScale,
+    isZoomed,
+    shouldSuppressTap,
+    zoomIn,
+    zoomOut,
+    setZoomPreset,
+  } = useReaderZoom({
+    viewportRef: scrollRef,
+    contentRef: zoomContentRef,
+    mode,
+    resetKey: `${chapterId}|${mode}`,
+    onPinchStart: cancelFlipForZoom,
+  });
+  isZoomedRef.current = isZoomed;
+  suppressZoomTapRef.current = shouldSuppressTap;
+
   /* QuickSetters are bound to the element that is front *for this gesture*.
      Rebuilt on every pointerdown so a swap mid-turn can never leave the paint
      writing to a stale layer. */
@@ -1441,6 +1480,8 @@ function ReaderContent() {
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (mode !== "paginated" || flipping.current) return;
+    /* Zoom owns the canvas while magnified — pan instead of turning pages. */
+    if (isZoomedRef.current || suppressZoomTapRef.current()) return;
     const d = drag.current;
     /* A second finger (pinch attempt, resting thumb) must never take over a
        turn already in flight. */
@@ -1520,6 +1561,7 @@ function ReaderContent() {
     /* tap, or a swipe that never resolved into a turn */
     if (!d.moved || d.dir === 0) {
       if (!d.moved) {
+        if (isZoomedRef.current || suppressZoomTapRef.current()) return;
         const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
         const x = e.clientX - rect.left;
         const w = rect.width;
@@ -1814,6 +1856,10 @@ function ReaderContent() {
   const vTap = useRef<{ x: number; y: number; t: number } | null>(null);
 
   const onVerticalTapDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (isZoomedRef.current) {
+      vTap.current = null;
+      return;
+    }
     vTap.current = { x: e.clientX, y: e.clientY, t: Date.now() };
   };
 
@@ -1821,6 +1867,7 @@ function ReaderContent() {
     const start = vTap.current;
     vTap.current = null;
     if (!start) return;
+    if (suppressZoomTapRef.current() || isZoomedRef.current) return;
     if (Date.now() - start.t > 600) return; // long press
     if (Math.hypot(e.clientX - start.x, e.clientY - start.y) > 12) return; // a scroll
     /* Vertical mode's tap is intentionally ambiguous: if chrome is hidden but
@@ -2040,85 +2087,90 @@ function ReaderContent() {
         onPointerCancel={mode === "paginated" ? onPointerCancel : undefined}
         style={lampOn ? { filter: "sepia(0.28) saturate(0.9)" } : undefined}
       >
-        {mode === "vertical" ? (
-          <div className="yomi-vpages">
-            {images.map((src, i) => (
-              <div key={`${chapterId}-${i}`} className="yomi-vpage">
-                <img
-                  src={getProxyUrl(src)}
-                  alt={`Page ${i + 1}`}
-                  referrerPolicy="no-referrer"
-                  /* The opening slice must never show a blank gap while the
-                     lazy loader warms up. */
-                  loading={i < 2 ? "eager" : "lazy"}
-                  decoding="async"
-                  className="yomi-vpage-img"
-                />
-              </div>
-            ))}
-            {images.length === 0 && (
-              <div className="yomi-empty-pages">No pages available for this chapter.</div>
-            )}
-
-            {/* End-of-chapter navigation — lives in the scroll flow so it is
-                always visible when the reader reaches the last panel. It is
-                intentionally NOT part of the auto-hiding chrome: a reader can
-                advance without tapping to summon the bars, which keeps the
-                immersive feel intact. The pointer handlers stop the panel's
-                taps bubbling to .yomi-pages, whose vertical tap logic would
-                otherwise read a button press as a center tap and toggle
-                immersive mode out from under the navigation. */}
-            {chapterReady && (
-              <div
-                className="yomi-chapend"
-                onPointerDown={(e) => e.stopPropagation()}
-                onPointerUp={(e) => e.stopPropagation()}
-              >
-                <span className="yomi-chapend-mark" aria-hidden="true">読</span>
-                <p className="yomi-chapend-kicker">End of Chapter</p>
-                <h3 className="yomi-chapend-title">
-                  {currentIdx >= 0 ? `Chapter ${chapters[currentIdx].chapterNumber}` : title}
-                </h3>
-
-                <div className="yomi-chapend-actions">
-                  <button
-                    className="yomi-chapend-btn prev"
-                    onClick={() => goChapter(-1)}
-                    disabled={!hasPrev}
-                    title={hasPrev ? `Previous chapter · Ch ${prevCh?.chapterNumber}` : "No previous chapter"}
-                  >
-                    <ChevronsLeft size={18} />
-                    <span className="lbl">
-                      <small>Previous</small>
-                      <b>{hasPrev ? `Ch ${prevCh?.chapterNumber}` : "No previous"}</b>
-                    </span>
-                  </button>
-                  <button
-                    className="yomi-chapend-btn next"
-                    onClick={() => goChapter(1)}
-                    disabled={!hasNext}
-                    title={hasNext ? `Next chapter · Ch ${nextCh?.chapterNumber}` : "No next chapter"}
-                  >
-                    <span className="lbl">
-                      <small>Next</small>
-                      <b>{hasNext ? `Ch ${nextCh?.chapterNumber}` : "No next"}</b>
-                    </span>
-                    <ChevronsRight size={18} />
-                  </button>
+        {/* Zoom content layer — pinch/pan translate+scale land here so page-flip
+            3D and vertical strip layout stay untouched underneath. */}
+        <div className="yomi-zoom-content" ref={zoomContentRef}>
+          {mode === "vertical" ? (
+            <div className="yomi-vpages">
+              {images.map((src, i) => (
+                <div key={`${chapterId}-${i}`} className="yomi-vpage">
+                  <img
+                    src={getProxyUrl(src)}
+                    alt={`Page ${i + 1}`}
+                    referrerPolicy="no-referrer"
+                    /* The opening slice must never show a blank gap while the
+                       lazy loader warms up. */
+                    loading={i < 2 ? "eager" : "lazy"}
+                    decoding="async"
+                    className="yomi-vpage-img"
+                    draggable={false}
+                  />
                 </div>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="yomi-flip-scene">
-            <div className="yomi-flip-sheet" ref={sheetRef}>
-              <div className="yomi-flip-stack" />
-              <div className="yomi-flip-back" ref={backRef} />
-              <div className="yomi-flip-front" ref={frontRef} />
-              <div className="yomi-flip-shade" ref={shadeRef} />
+              ))}
+              {images.length === 0 && (
+                <div className="yomi-empty-pages">No pages available for this chapter.</div>
+              )}
+
+              {/* End-of-chapter navigation — lives in the scroll flow so it is
+                  always visible when the reader reaches the last panel. It is
+                  intentionally NOT part of the auto-hiding chrome: a reader can
+                  advance without tapping to summon the bars, which keeps the
+                  immersive feel intact. The pointer handlers stop the panel's
+                  taps bubbling to .yomi-pages, whose vertical tap logic would
+                  otherwise read a button press as a center tap and toggle
+                  immersive mode out from under the navigation. */}
+              {chapterReady && (
+                <div
+                  className="yomi-chapend"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onPointerUp={(e) => e.stopPropagation()}
+                >
+                  <span className="yomi-chapend-mark" aria-hidden="true">読</span>
+                  <p className="yomi-chapend-kicker">End of Chapter</p>
+                  <h3 className="yomi-chapend-title">
+                    {currentIdx >= 0 ? `Chapter ${chapters[currentIdx].chapterNumber}` : title}
+                  </h3>
+
+                  <div className="yomi-chapend-actions">
+                    <button
+                      className="yomi-chapend-btn prev"
+                      onClick={() => goChapter(-1)}
+                      disabled={!hasPrev}
+                      title={hasPrev ? `Previous chapter · Ch ${prevCh?.chapterNumber}` : "No previous chapter"}
+                    >
+                      <ChevronsLeft size={18} />
+                      <span className="lbl">
+                        <small>Previous</small>
+                        <b>{hasPrev ? `Ch ${prevCh?.chapterNumber}` : "No previous"}</b>
+                      </span>
+                    </button>
+                    <button
+                      className="yomi-chapend-btn next"
+                      onClick={() => goChapter(1)}
+                      disabled={!hasNext}
+                      title={hasNext ? `Next chapter · Ch ${nextCh?.chapterNumber}` : "No next chapter"}
+                    >
+                      <span className="lbl">
+                        <small>Next</small>
+                        <b>{hasNext ? `Ch ${nextCh?.chapterNumber}` : "No next"}</b>
+                      </span>
+                      <ChevronsRight size={18} />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="yomi-flip-scene">
+              <div className="yomi-flip-sheet" ref={sheetRef}>
+                <div className="yomi-flip-stack" />
+                <div className="yomi-flip-back" ref={backRef} />
+                <div className="yomi-flip-front" ref={frontRef} />
+                <div className="yomi-flip-shade" ref={shadeRef} />
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Vertical tip */}
@@ -2145,7 +2197,120 @@ function ReaderContent() {
             transition: "opacity 0.3s",
           }}
         >
-          Tap center to toggle · Scroll to advance
+          Pinch to zoom · Double-tap · Scroll to advance
+        </div>
+      )}
+
+      {/* Live zoom level — only while magnified so it never clutters 1× reading. */}
+      {isZoomed && (
+        <div className="yomi-zoom-badge" aria-live="polite">
+          {zoomScale.toFixed(1)}× · double-tap to reset
+        </div>
+      )}
+
+      {/* Floating zoom controls for easy mobile access */}
+      <div 
+        className="yomi-zoom-controls"
+        style={{
+          position: "absolute",
+          right: "calc(12px + var(--sab))",
+          bottom: "calc(120px + var(--sab) + var(--browser-bar, 0px))",
+          display: "flex",
+          flexDirection: "column",
+          gap: "8px",
+          zIndex: 40,
+          opacity: chromeShown ? 1 : 0,
+          transition: "opacity 0.3s",
+          pointerEvents: chromeShown ? "auto" : "none"
+        }}
+      >
+        <button
+          className="yomi-zoom-btn"
+          onClick={zoomIn}
+          aria-label="Zoom in"
+          title="Zoom in"
+          style={{
+            width: "44px",
+            height: "44px",
+            borderRadius: "50%",
+            background: "oklch(10% 0 0 / 0.7)",
+            backdropFilter: "blur(8px)",
+            border: "1px solid oklch(30% 0 0 / 0.3)",
+            color: "var(--fg)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            transition: "all 0.2s"
+          }}
+        >
+          <Plus size={20} />
+        </button>
+        <button
+          className="yomi-zoom-btn"
+          onClick={zoomOut}
+          aria-label="Zoom out"
+          title="Zoom out"
+          style={{
+            width: "44px",
+            height: "44px",
+            borderRadius: "50%",
+            background: "oklch(10% 0 0 / 0.7)",
+            backdropFilter: "blur(8px)",
+            border: "1px solid oklch(30% 0 0 / 0.3)",
+            color: "var(--fg)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            transition: "all 0.2s"
+          }}
+        >
+          <Minus size={20} />
+        </button>
+      </div>
+
+      {/* Quick zoom presets - accessible via menu or long press */}
+      {isZoomed && (
+        <div 
+          className="yomi-zoom-presets"
+          style={{
+            position: "absolute",
+            right: "calc(64px + var(--sab))",
+            bottom: "calc(120px + var(--sab) + var(--browser-bar, 0px))",
+            display: "flex",
+            flexDirection: "column",
+            gap: "4px",
+            zIndex: 40,
+            opacity: chromeShown ? 1 : 0,
+            transition: "opacity 0.3s",
+            pointerEvents: chromeShown ? "auto" : "none"
+          }}
+        >
+          {[1.5, 2, 2.5, 3].map((preset) => (
+            <button
+              key={preset}
+              onClick={() => setZoomPreset(preset as 1.5 | 2 | 2.5 | 3)}
+              style={{
+                padding: "6px 12px",
+                borderRadius: "8px",
+                background: zoomScale >= preset - 0.1 && zoomScale <= preset + 0.1 
+                  ? "var(--accent)" 
+                  : "oklch(10% 0 0 / 0.7)",
+                backdropFilter: "blur(8px)",
+                border: "1px solid oklch(30% 0 0 / 0.3)",
+                color: zoomScale >= preset - 0.1 && zoomScale <= preset + 0.1 
+                  ? "var(--accent-ink)" 
+                  : "var(--fg)",
+                fontSize: "12px",
+                fontWeight: "600",
+                cursor: "pointer",
+                transition: "all 0.2s"
+              }}
+            >
+              {preset}×
+            </button>
+          ))}
         </div>
       )}
 

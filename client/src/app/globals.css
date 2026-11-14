@@ -440,6 +440,128 @@ img { display: block; max-width: 100%; }
   font-family: var(--font-mono); font-size: 0.68rem;
   letter-spacing: 0.18em; color: var(--muted); text-transform: uppercase;
 }
+
+/* ── Reader Zoom Controls ── */
+.yomi-zoom-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: oklch(10% 0 0 / 0.7);
+  backdrop-filter: blur(8px);
+  border: 1px solid oklch(30% 0 0 / 0.3);
+  color: var(--fg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.yomi-zoom-btn:hover {
+  background: oklch(15% 0 0 / 0.8);
+  border-color: oklch(40% 0 0 / 0.4);
+  transform: scale(1.05);
+}
+
+.yomi-zoom-btn:active {
+  transform: scale(0.95);
+}
+
+.yomi-zoom-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.yomi-zoom-controls {
+  position: absolute;
+  right: calc(12px + var(--sab));
+  bottom: calc(120px + var(--sab) + var(--browser-bar, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 40;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+
+.yomi-zoom-controls.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.yomi-zoom-presets {
+  position: absolute;
+  right: calc(64px + var(--sab));
+  bottom: calc(120px + var(--sab) + var(--browser-bar, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 40;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+
+.yomi-zoom-presets.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.yomi-zoom-presets button {
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: oklch(10% 0 0 / 0.7);
+  backdrop-filter: blur(8px);
+  border: 1px solid oklch(30% 0 0 / 0.3);
+  color: var(--fg);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.yomi-zoom-presets button:hover {
+  background: oklch(15% 0 0 / 0.8);
+  border-color: oklch(40% 0 0 / 0.4);
+}
+
+.yomi-zoom-presets button:active {
+  transform: scale(0.95);
+}
+
+.yomi-zoom-presets button.active {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+
+/* Mobile optimization: larger touch targets and better spacing */
+@media (max-width: 959px) {
+  .yomi-zoom-btn {
+    width: 48px;
+    height: 48px;
+  }
+  
+  .yomi-zoom-controls {
+    right: calc(16px + var(--sat-r));
+    bottom: calc(140px + var(--sab) + var(--browser-bar, 0px));
+  }
+  
+  .yomi-zoom-presets {
+    right: calc(72px + var(--sat-r));
+    bottom: calc(140px + var(--sab) + var(--browser-bar, 0px));
+  }
+  
+  .yomi-zoom-presets button {
+    padding: 8px 16px;
+    font-size: 13px;
+  }
+}
 .yomi-greeting h1 {
   font-family: var(--font-display);
   font-size: clamp(1.7rem, 4.4vw, 2.4rem);
